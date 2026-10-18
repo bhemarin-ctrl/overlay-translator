@@ -84,6 +84,13 @@
 
         <!-- Unified user-initiated capture startup and optional system consent. -->
         <activity
+            android:name=".ui.PageEditorActivity"
+            android:exported="false"
+            android:label="Editor de páginas"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.GameOcr" />
+        <activity
             android:name=".capture.CaptureStartRequestActivity"
             android:exported="false"
             android:theme="@style/Theme.GameOcr.Transparent"

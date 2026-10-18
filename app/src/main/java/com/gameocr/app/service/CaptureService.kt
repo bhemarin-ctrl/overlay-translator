@@ -560,9 +560,9 @@ class CaptureService : Service() {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                 )
             }
+            // Tradutor Manga: o item "Abrir app" do menu agora abre o editor da última página salva.
             it.onMenuOpenMainActivity = { startActivity(
-                Intent(this, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                com.gameocr.app.ui.PageEditorActivity.intent(this)
             ) }
             // 主球技能切换：菜单点了「划词翻译 / 全屏翻译」时由 FloatingButtonManager 触发，
             // 这里负责持久化到 Settings + 弹个 info 提示告知新行为；图标切换由 FloatingButtonManager
