@@ -12,7 +12,7 @@
     <string name="settings_auto_ocr_add_language">添加语言</string>
     <string name="settings_auto_ocr_delete_language_confirm">确认删除%1$s？</string>
     <string name="settings_auto_ocr_description">为不同语言选择识别方式，仅在使用“自动”时生效。</string>
-    <string name="app_name">屏译</string>
+    <string name="app_name">Tradutor Manga</string>
 
     <!-- 通用 -->
     <string name="common_back">返回</string>

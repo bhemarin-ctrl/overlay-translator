@@ -1,4 +1,4 @@
-name: Build APK (manga)
+name: Build Tradutor Manga
 
 on:
   workflow_dispatch:
@@ -33,18 +33,18 @@ jobs:
       - name: Assemble debug
         run: ./gradlew --no-daemon assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk araya-manga-translator.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk tradutor-manga.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: araya-manga-translator
-          path: araya-manga-translator.apk
+          name: tradutor-manga
+          path: tradutor-manga.apk
           retention-days: 30
       - name: Publish rolling release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk-latest --yes --cleanup-tag || true
-          gh release create apk-latest araya-manga-translator.apk \
-            --title "APK mais recente" \
+          gh release create apk-latest tradutor-manga.apk \
+            --title "Tradutor Manga - APK mais recente" \
             --notes "Build automático do commit ${GITHUB_SHA::7} ($(date -u +%d/%m/%Y\ %H:%M) UTC)" \
             --target "$GITHUB_SHA"

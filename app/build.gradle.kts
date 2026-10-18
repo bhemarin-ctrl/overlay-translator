@@ -43,7 +43,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.gameocr.app"
+        applicationId = "app.tradutormanga"
         minSdk = 26
         targetSdk = 35
         versionCode = 20
@@ -104,7 +104,6 @@ android {
             }
         }
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
         }
     }

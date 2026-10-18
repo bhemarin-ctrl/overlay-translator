@@ -12,7 +12,7 @@
     <string name="settings_auto_ocr_add_language">Add language</string>
     <string name="settings_auto_ocr_delete_language_confirm">Confirm deletion of %1$s?</string>
     <string name="settings_auto_ocr_description">Choose a recognition method for each language. Applies only when “Auto” is selected.</string>
-    <string name="app_name">Screen Translator</string>
+    <string name="app_name">Tradutor Manga</string>
 
     <!-- Common -->
     <string name="common_back">Back</string>
