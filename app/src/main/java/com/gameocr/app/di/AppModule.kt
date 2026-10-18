@@ -66,6 +66,7 @@ object AppModule {
         )
         // 明文 HTTP 仅允许私有/回环地址 + 用户显式白名单 host。详见拦截器注释。
         .addInterceptor(privateCleartextInterceptor)
+        .addInterceptor(com.gameocr.app.network.TransientRetryInterceptor())
         .apply {
             if (BuildConfig.DEBUG) {
                 // Complete request/response logs for Debug builds only. The interceptor preserves

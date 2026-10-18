@@ -199,6 +199,8 @@ internal object VisualTranslationPromptPolicy {
         append("Base translations on accepted corrections. Use visible speakers, actions, relationships, ")
         append("tone, and scene context to resolve ambiguity and make the translation natural, but do not ")
         append("invent dialogue or facts that are not supported by the source and image. ")
+        append(MANGA_SFX_RULE)
+        append(" ")
         if (visual.combineIntoSingleOutput) {
             append("visual_items is an unordered set. Translate all items into one coherent paragraph ")
             append("following ordered_ids. ")

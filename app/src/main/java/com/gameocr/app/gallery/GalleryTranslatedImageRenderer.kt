@@ -30,6 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -148,9 +149,25 @@ class GalleryTranslatedImageRenderer @Inject constructor(
         val typeface = overlayFontManager.typefaceFor(settings)
         val canvas = Canvas(output)
 
+        // Fala fora de balão: fundo irregular (arte) em volta da caixa.
+        val floatingStyles = renderSegments.map { segment ->
+            if (segment.source.keepOriginal) null else detectFloatingText(source, segment.sourceBounds)
+        }
         renderSegments.forEachIndexed { index, segment ->
             val adaptiveStyle = adaptiveStyles.getOrNull(index)
-            if (adaptiveStyle != null) {
+            val floating = floatingStyles.getOrNull(index)
+            if (floating != null) {
+                val patch = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = floating.patchColor
+                    this.style = Paint.Style.FILL
+                }
+                (segment.sourceBoxes + segment.renderBounds).forEach { box ->
+                    canvas.drawRoundRect(
+                        box.left.toFloat(), box.top.toFloat(), box.right.toFloat(), box.bottom.toFloat(),
+                        8f, 8f, patch,
+                    )
+                }
+            } else if (adaptiveStyle != null) {
                 drawAdaptiveBackground(canvas, segment, adaptiveStyle)
             } else {
                 drawFixedBackground(
@@ -164,7 +181,9 @@ class GalleryTranslatedImageRenderer @Inject constructor(
         }
         renderSegments.forEachIndexed { index, segment ->
             val adaptiveStyle = adaptiveStyles.getOrNull(index)
-            val foregroundColor = adaptiveStyle?.foregroundColor ?: palette.foregroundColor
+            val floating = floatingStyles.getOrNull(index)
+            val foregroundColor = floating?.foregroundColor
+                ?: adaptiveStyle?.foregroundColor ?: palette.foregroundColor
             val maximumTextSizePx = (
                 (adaptiveStyle?.maxTextSizeSp ?: effectiveSettings.overlayTextSizeSp.toFloat()) *
                     scaledDensity * segment.source.fontScale.coerceIn(0.3f, 3f)
@@ -174,10 +193,16 @@ class GalleryTranslatedImageRenderer @Inject constructor(
                 ).roundToInt().coerceIn(1, maximumTextSizePx)
             val globalTextStyle = effectiveSettings.overlayTextStyle.normalized()
             val textStyle = globalTextStyle.copy(
+                strokeEnabled = globalTextStyle.strokeEnabled || floating != null,
+                strokeColor = floating?.strokeColor ?: globalTextStyle.strokeColor,
+                strokeWidthDp = if (floating != null) 2.5f else globalTextStyle.strokeWidthDp,
                 letterSpacingEm = (segment.source.letterSpacingEm ?: globalTextStyle.letterSpacingEm)
                     .coerceIn(-0.15f, 0.6f),
                 lineSpacingMultiplier = (segment.source.lineSpacing ?: globalTextStyle.lineSpacingMultiplier)
                     .coerceIn(0.7f, 2.2f),
+                alignment = segment.source.textAlignment
+                    ?.let { runCatching { OverlayTextAlignment.valueOf(it) }.getOrNull() }
+                    ?: OverlayTextAlignment.CENTER,
             )
             if (segment.orientation.isGalleryVertical()) {
                 drawVerticalTranslation(
@@ -214,6 +239,57 @@ class GalleryTranslatedImageRenderer @Inject constructor(
             }
         }
         return output
+    }
+
+
+    private class FloatingTextStyle(val patchColor: Int, val foregroundColor: Int, val strokeColor: Int)
+
+    /**
+     * Amostra um anel de pixels ao redor da caixa. Balões e caixas de narração têm anel uniforme
+     * (quase todos os pixels perto da mediana); texto solto sobre a arte tem anel irregular.
+     * Nesse caso devolve cor de remendo (média do anel), texto em cor contrastante e contorno oposto.
+     */
+    private fun detectFloatingText(bitmap: Bitmap, bounds: Rect): FloatingTextStyle? {
+        val pad = max(6, (min(bounds.width(), bounds.height()) * 0.15f).toInt())
+        val outer = Rect(bounds.left - pad, bounds.top - pad, bounds.right + pad, bounds.bottom + pad)
+        if (!outer.intersect(0, 0, bitmap.width, bitmap.height)) return null
+        val lums = ArrayList<Int>()
+        var r = 0L
+        var g = 0L
+        var b = 0L
+        val stride = max(1, min(outer.width(), outer.height()) / 40)
+        var y = outer.top
+        while (y < outer.bottom) {
+            var x = outer.left
+            while (x < outer.right) {
+                if (!(x >= bounds.left && x < bounds.right && y >= bounds.top && y < bounds.bottom)) {
+                    val c = bitmap.getPixel(x, y)
+                    val cr = (c shr 16) and 0xFF
+                    val cg = (c shr 8) and 0xFF
+                    val cb = c and 0xFF
+                    lums.add((cr * 299 + cg * 587 + cb * 114) / 1000)
+                    r += cr
+                    g += cg
+                    b += cb
+                }
+                x += stride
+            }
+            y += stride
+        }
+        if (lums.size < 24) return null
+        val sorted = lums.sorted()
+        val median = sorted[sorted.size / 2]
+        val near = lums.count { kotlin.math.abs(it - median) <= 28 }
+        if (near.toFloat() / lums.size >= 0.72f) return null
+        val n = lums.size
+        val patch = (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
+        val meanLum = lums.average()
+        val dark = meanLum < 128
+        return FloatingTextStyle(
+            patchColor = patch,
+            foregroundColor = if (dark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt(),
+            strokeColor = if (dark) 0xFF000000.toInt() else 0xFFFFFFFF.toInt(),
+        )
     }
 
     private fun drawAdaptiveBackground(

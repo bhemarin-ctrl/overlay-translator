@@ -615,6 +615,20 @@ private fun EditPanel(
                         Text("Excluir balão", fontSize = 13.sp)
                     }
                 }
+                val align = seg.textAlignment ?: "CENTER"
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf("START" to "Esquerda", "CENTER" to "Centro", "END" to "Direita").forEach { (key, label) ->
+                        FilterChip(
+                            selected = align == key,
+                            onClick = { core.updateSelected { it.copy(textAlignment = key) } },
+                            label = { Text(label, fontSize = 13.sp) },
+                        )
+                    }
+                }
                 LabeledSlider(
                     label = "Fonte ×${"%.1f".format(Locale.ROOT, seg.fontScale)}",
                     value = seg.fontScale,

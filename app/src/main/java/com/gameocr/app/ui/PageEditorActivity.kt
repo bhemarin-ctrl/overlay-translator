@@ -14,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -494,7 +495,12 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val vm = viewModel
     var confirmDelete by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color.White)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -712,8 +718,10 @@ private fun SelectionPanel(vm: PageEditorCore) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(androidx.compose.ui.graphics.Color.White)
+            .border(1.dp, androidx.compose.ui.graphics.Color.Black)
             .verticalScroll(rememberScrollState())
-            .padding(top = 6.dp),
+            .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (seg == null) {
@@ -764,6 +772,21 @@ private fun SelectionPanel(vm: PageEditorCore) {
                 onClick = { vm.updateSelected { it.copy(outputOrientation = "VERTICAL_RTL") } },
                 label = { Text("Vertical") },
             )
+        }
+        val align = seg.textAlignment ?: "CENTER"
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Posição:", style = MaterialTheme.typography.bodySmall)
+            listOf("START" to "Esquerda", "CENTER" to "Centro", "END" to "Direita").forEach { (key, label) ->
+                FilterChip(
+                    selected = align == key,
+                    onClick = { vm.updateSelected { it.copy(textAlignment = key) } },
+                    label = { Text(label) },
+                )
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val letter = seg.letterSpacingEm ?: 0f

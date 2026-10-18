@@ -4227,6 +4227,11 @@ class CaptureService : Service() {
                 translatedText = translatedText,
                 unit = unit,
             ).forEach { update ->
+                // Efeitos sonoros: o modelo devolve o texto original sem traduzir; não desenhamos nada.
+                val original = blocks.getOrNull(update.blockIndex)?.text
+                    ?.filterNot { it.isWhitespace() }.orEmpty()
+                val returned = update.text.filterNot { it.isWhitespace() }
+                if (original.isNotEmpty() && original == returned) return@forEach
                 translatedMaskBlockTexts[update.blockIndex] = update.text
             }
         }

@@ -67,6 +67,12 @@ internal object StructuredContextBatchSelectionPolicy {
             (forceSingleVisualBatch || (unitCount > 1 && mode != TranslationContextMode.FAST_PER_SEGMENT))
 }
 
+/** Efeitos sonoros (onomatopeias desenhadas) nunca são traduzidos: o item volta idêntico ao original. */
+internal const val MANGA_SFX_RULE =
+    "Sound effects (onomatopoeia/SFX drawn as art, e.g. ドン, ゴゴゴ, バキ, ザワザワ, キャー as a scream drawn in the art) " +
+        "must NEVER be translated: for such an item return its source text exactly unchanged as the translation. " +
+        "Spoken dialogue, thoughts and narration are always translated."
+
 internal object StructuredBatchPromptPolicy {
     fun buildUserPayload(
         attempt: StructuredBatchAttempt,
@@ -92,7 +98,8 @@ internal object StructuredBatchPromptPolicy {
         append("Translate only translation_items. Return one JSON object and no prose: ")
         append("{\"translations\":[{\"id\":1,\"translation\":\"...\"}]}. ")
         append("Return every requested id exactly once. Do not return unknown ids. ")
-        append("Output order does not matter because results are mapped by id.")
+        append("Output order does not matter because results are mapped by id. ")
+        append(MANGA_SFX_RULE)
         append(buildBackgroundSuffix(context, options, activeSources))
     }
 

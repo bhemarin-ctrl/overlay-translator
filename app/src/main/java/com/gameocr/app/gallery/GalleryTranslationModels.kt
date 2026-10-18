@@ -65,6 +65,8 @@ data class GalleryTranslationSegment(
     val letterSpacingEm: Float? = null,
     /** Multiplicador do espaçamento entre linhas (null = usa o estilo global). */
     val lineSpacing: Float? = null,
+    /** Alinhamento do texto na caixa: START, CENTER ou END (null = usa o estilo global). */
+    val textAlignment: String? = null,
 ) {
     companion object {
         fun from(block: TextBlock, translation: String?): GalleryTranslationSegment =
