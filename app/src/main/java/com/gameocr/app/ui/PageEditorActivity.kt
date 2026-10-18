@@ -101,7 +101,7 @@ class PageEditorActivity : ComponentActivity() {
         setContent {
             GameOcrTheme(themeMode = com.gameocr.app.ui.theme.ThemeMode.LIGHT) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    PageEditorScreen(viewModel = viewModel, onClose = { closeAfterSave() })
+                    PageEditorScreen(viewModel = viewModel.core, onClose = { closeAfterSave() })
                 }
             }
         }
@@ -115,20 +115,20 @@ class PageEditorActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        viewModel.saveNow()
+        viewModel.core.saveNow()
     }
 
     private fun closeAfterSave() {
-        viewModel.saveNow()
+        viewModel.core.saveNow()
         finish()
     }
 
     private fun handleIntent(intent: Intent?) {
         val itemId = intent?.getStringExtra(EXTRA_ITEM_ID)
         if (itemId != null) {
-            viewModel.open(itemId)
+            viewModel.core.open(itemId)
         } else {
-            viewModel.openLastReadingPage()
+            viewModel.core.openLastReadingPage()
         }
     }
 
@@ -142,16 +142,28 @@ class PageEditorActivity : ComponentActivity() {
     }
 }
 
-private enum class DragMode { NONE, PAN, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR }
-
 @HiltViewModel
 class PageEditorViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext context: Context,
+    repository: GalleryTranslationRepository,
+    imageDecoder: GalleryImageDecoder,
+    renderer: GalleryTranslatedImageRenderer,
+    json: Json,
+) : ViewModel() {
+    val core = PageEditorCore(viewModelScope, context, repository, imageDecoder, renderer, json)
+}
+
+private enum class DragMode { NONE, PAN, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR }
+
+/** Lógica de edição compartilhada entre a tela [PageEditorActivity] e o editor sobreposto ao leitor. */
+class PageEditorCore(
+    private val scope: kotlinx.coroutines.CoroutineScope,
+    private val context: Context,
     private val repository: GalleryTranslationRepository,
     private val imageDecoder: GalleryImageDecoder,
     private val renderer: GalleryTranslatedImageRenderer,
     private val json: Json,
-) : ViewModel() {
+) {
     var item by mutableStateOf<GalleryTranslationItemEntity?>(null)
         private set
     var segments by mutableStateOf<List<GalleryTranslationSegment>>(emptyList())
@@ -187,7 +199,7 @@ class PageEditorViewModel @Inject constructor(
     fun open(itemId: String) {
         if (openingId == itemId && item != null) return
         openingId = itemId
-        viewModelScope.launch {
+        scope.launch {
             saveNowInternal()
             val entity = repository.getItem(itemId) ?: return@launch
             load(entity)
@@ -196,7 +208,7 @@ class PageEditorViewModel @Inject constructor(
 
     fun openLastReadingPage() {
         if (item != null) return
-        viewModelScope.launch {
+        scope.launch {
             val entity = repository.lastReadingPage()
             if (entity == null) {
                 message = "Nenhuma página salva ainda. Traduza uma página na leitura primeiro."
@@ -237,7 +249,7 @@ class PageEditorViewModel @Inject constructor(
 
     fun goToPage(delta: Int) {
         val target = pages.getOrNull(pageIndex + delta) ?: return
-        viewModelScope.launch {
+        scope.launch {
             saveNowInternal()
             load(target)
         }
@@ -289,14 +301,14 @@ class PageEditorViewModel @Inject constructor(
         dirty = true
         scheduleRender()
         saveJob?.cancel()
-        saveJob = viewModelScope.launch {
+        saveJob = scope.launch {
             delay(AUTOSAVE_DELAY_MS)
             saveNowInternal()
         }
     }
 
     fun saveNow() {
-        viewModelScope.launch { saveNowInternal() }
+        scope.launch { saveNowInternal() }
     }
 
     private suspend fun saveNowInternal() {
@@ -310,7 +322,7 @@ class PageEditorViewModel @Inject constructor(
 
     private fun scheduleRender() {
         renderJob?.cancel()
-        renderJob = viewModelScope.launch {
+        renderJob = scope.launch {
             delay(RENDER_DEBOUNCE_MS)
             renderNow()
         }
@@ -347,7 +359,7 @@ class PageEditorViewModel @Inject constructor(
 
     fun exportCurrentPage() {
         val current = item ?: return
-        viewModelScope.launch {
+        scope.launch {
             saveNowInternal()
             busy = true
             val folder = projectFolderName(current)
@@ -361,7 +373,7 @@ class PageEditorViewModel @Inject constructor(
 
     fun exportAllPages() {
         val current = item ?: return
-        viewModelScope.launch {
+        scope.launch {
             saveNowInternal()
             busy = true
             val folder = projectFolderName(current)
@@ -387,7 +399,7 @@ class PageEditorViewModel @Inject constructor(
 
     fun deleteCurrentPage(onEmpty: () -> Unit) {
         val current = item ?: return
-        viewModelScope.launch {
+        scope.launch {
             dirty = false
             repository.deleteItem(current.id)
             val remaining = pages.filterNot { it.id == current.id }
@@ -478,7 +490,7 @@ class PageEditorViewModel @Inject constructor(
 }
 
 @Composable
-private fun PageEditorScreen(viewModel: PageEditorViewModel, onClose: () -> Unit) {
+private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val vm = viewModel
     var confirmDelete by remember { mutableStateOf(false) }
@@ -544,7 +556,7 @@ private fun PageEditorScreen(viewModel: PageEditorViewModel, onClose: () -> Unit
 }
 
 @Composable
-private fun EditorCanvas(vm: PageEditorViewModel, modifier: Modifier) {
+private fun EditorCanvas(vm: PageEditorCore, modifier: Modifier) {
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     var dragMode by remember { mutableStateOf(DragMode.NONE) }
     val handleRadiusPx = 44f
@@ -694,7 +706,7 @@ private fun EditorCanvas(vm: PageEditorViewModel, modifier: Modifier) {
 }
 
 @Composable
-private fun SelectionPanel(vm: PageEditorViewModel) {
+private fun SelectionPanel(vm: PageEditorCore) {
     val index = vm.selected
     val seg = vm.segments.getOrNull(index)
     Column(

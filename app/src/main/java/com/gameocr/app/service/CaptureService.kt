@@ -295,6 +295,42 @@ class CaptureService : Service() {
     @Inject lateinit var sourcePreservationService: SourcePreservationService
     @Inject lateinit var offlineDictionaryRepository: OfflineDictionaryRepository
     @Inject lateinit var galleryRepository: com.gameocr.app.gallery.GalleryTranslationRepository
+    @Inject lateinit var galleryImageDecoder: com.gameocr.app.gallery.GalleryImageDecoder
+    @Inject lateinit var galleryRenderer: com.gameocr.app.gallery.GalleryTranslatedImageRenderer
+    @Inject lateinit var appJson: kotlinx.serialization.json.Json
+    private var pageEditOverlay: com.gameocr.app.overlay.PageEditOverlay? = null
+
+    /** Abre/fecha o editor transparente sobre o leitor (nova instância a cada abertura = sempre a última página). */
+    private fun togglePageEditOverlay() {
+        mainScope.launch {
+            val current = pageEditOverlay
+            if (current != null && current.isShowing) {
+                dismissPageEditOverlay()
+                return@launch
+            }
+            val core = com.gameocr.app.ui.PageEditorCore(
+                mainScope, applicationContext, galleryRepository, galleryImageDecoder, galleryRenderer, appJson,
+            )
+            val overlayEditor = com.gameocr.app.overlay.PageEditOverlay(
+                context = this@CaptureService,
+                core = core,
+                onOpenFullEditor = { id ->
+                    dismissPageEditOverlay()
+                    startActivity(
+                        com.gameocr.app.ui.PageEditorActivity.intent(this@CaptureService, id)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                },
+            )
+            pageEditOverlay = overlayEditor
+            overlayEditor.show(null)
+        }
+    }
+
+    private fun dismissPageEditOverlay() {
+        pageEditOverlay?.dismiss()
+        pageEditOverlay = null
+    }
 
     /** Captura da página atual, guardada até a tradução terminar para salvar no projeto de leitura. */
     private data class PageSnapshot(
@@ -561,9 +597,7 @@ class CaptureService : Service() {
                 )
             }
             // Tradutor Manga: o item "Abrir app" do menu agora abre o editor da última página salva.
-            it.onMenuOpenMainActivity = { startActivity(
-                com.gameocr.app.ui.PageEditorActivity.intent(this)
-            ) }
+            it.onMenuOpenMainActivity = { togglePageEditOverlay() }
             // 主球技能切换：菜单点了「划词翻译 / 全屏翻译」时由 FloatingButtonManager 触发，
             // 这里负责持久化到 Settings + 弹个 info 提示告知新行为；图标切换由 FloatingButtonManager
             // 在 applySkillIcon 里同步。
@@ -711,6 +745,7 @@ class CaptureService : Service() {
     ) {
         cancelActiveTranslationBatch("prepareCleanCaptureFrame")
         mainScope.launch {
+            dismissPageEditOverlay()
             overlay?.clearForCapture(preserveFloatingWindow = true)
             translationCard?.dismiss()
             translationBlockCopyOverlay?.dismiss()
@@ -5573,6 +5608,7 @@ class CaptureService : Service() {
 
     override fun onDestroy() {
         captureStopRequested = true
+        runCatching { dismissPageEditOverlay() }
         cleanupCapture()
         // 释放端侧 LLM 权重。runBlocking 在 onDestroy 是可接受的——cleanUp 内部是同步 JNI 调用，
         // 几十毫秒级；不阻塞主线程没意义，等 Mutex 拿到锁就立刻返回。
