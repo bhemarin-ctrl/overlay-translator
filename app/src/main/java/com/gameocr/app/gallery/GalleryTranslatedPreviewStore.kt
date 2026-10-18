@@ -63,6 +63,10 @@ class GalleryTranslatedPreviewStore @Inject constructor(
         settings: Settings,
     ): Bitmap? = loadTranslated(item, settings, thumbnail = false)
 
+    fun deleteItemPreview(taskId: String, itemId: String) {
+        File(File(root, taskId), "$itemId.jpg").delete()
+    }
+
     fun deleteTask(taskId: String) {
         File(root, taskId).deleteRecursively()
     }

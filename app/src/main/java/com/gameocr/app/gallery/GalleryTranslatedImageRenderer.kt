@@ -60,7 +60,7 @@ class GalleryTranslatedImageRenderer @Inject constructor(
         val mode = galleryExportRenderMode(settings)
         val baseSegments = segments.mapNotNull { segment ->
             val translatedText = normalizeGalleryExportText(segment.translatedText)
-            if (translatedText.isEmpty()) return@mapNotNull null
+            if (translatedText.isEmpty() || segment.keepOriginal) return@mapNotNull null
             val bounds = scaledGalleryRect(
                 rect = segment.boundingBox,
                 sourceWidth = coordinateWidth,
@@ -92,6 +92,18 @@ class GalleryTranslatedImageRenderer @Inject constructor(
             )
         }
         val renderSegments = baseSegments.mapNotNull { segment ->
+            val manualBounds = segment.source.renderBox?.let { box ->
+                scaledGalleryRect(
+                    rect = box,
+                    sourceWidth = coordinateWidth,
+                    sourceHeight = coordinateHeight,
+                    targetWidth = source.width,
+                    targetHeight = source.height,
+                )?.toAndroidRect()
+            }
+            if (manualBounds != null) {
+                return@mapNotNull segment.copy(renderBounds = manualBounds)
+            }
             val renderBounds = resolveRenderBounds(
                 segment = segment,
                 allSourceBounds = baseSegments.map(GalleryRenderSegment::sourceBounds),
@@ -153,7 +165,7 @@ class GalleryTranslatedImageRenderer @Inject constructor(
             val foregroundColor = adaptiveStyle?.foregroundColor ?: palette.foregroundColor
             val maximumTextSizePx = (
                 (adaptiveStyle?.maxTextSizeSp ?: effectiveSettings.overlayTextSizeSp.toFloat()) *
-                    scaledDensity
+                    scaledDensity * segment.source.fontScale.coerceIn(0.3f, 3f)
                 ).roundToInt().coerceAtLeast(1)
             val minimumTextSizePx = (
                 ADAPTIVE_MIN_TEXT_SIZE_SP * scaledDensity
@@ -205,7 +217,12 @@ class GalleryTranslatedImageRenderer @Inject constructor(
             color = style.backgroundColor
             this.style = Paint.Style.FILL
         }
-        segment.sourceBoxes.forEach { sourceBox ->
+        val boxesToFill = if (segment.source.renderBox != null) {
+            segment.sourceBoxes + segment.renderBounds
+        } else {
+            segment.sourceBoxes
+        }
+        boxesToFill.forEach { sourceBox ->
             val radius = min(sourceBox.width(), sourceBox.height()) * CORNER_RADIUS_RATIO
             canvas.drawRoundRect(
                 sourceBox.left.toFloat(),

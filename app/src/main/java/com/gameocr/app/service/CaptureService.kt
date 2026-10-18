@@ -294,6 +294,17 @@ class CaptureService : Service() {
     @Inject lateinit var translationGlossaryRepository: TranslationGlossaryRepository
     @Inject lateinit var sourcePreservationService: SourcePreservationService
     @Inject lateinit var offlineDictionaryRepository: OfflineDictionaryRepository
+    @Inject lateinit var galleryRepository: com.gameocr.app.gallery.GalleryTranslationRepository
+
+    /** Captura da página atual, guardada até a tradução terminar para salvar no projeto de leitura. */
+    private data class PageSnapshot(
+        val diagId: Long,
+        val file: java.io.File,
+        val width: Int,
+        val height: Int,
+    )
+
+    @Volatile private var pageSnapshot: PageSnapshot? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -3514,6 +3525,9 @@ class CaptureService : Service() {
                 settings,
                 diagId,
             )
+            if (settings.renderMode == RenderMode.BLOCKS && !redBoxActive && !loopMode) {
+                snapshotPageForProject(workBitmap, diagId)
+            }
             workBitmap.recycle()
             ensureCurrentSettledPage(settledPageRevision)
             if (translationBlocks.isEmpty()) {
@@ -3616,6 +3630,55 @@ class CaptureService : Service() {
             }
             activeCaptureDisplayRegion = null
             captureLock.unlock()
+        }
+    }
+
+    private suspend fun snapshotPageForProject(bitmap: Bitmap, diagId: Long) {
+        pageSnapshot?.file?.delete()
+        pageSnapshot = null
+        if (bitmap.isRecycled) return
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val file = java.io.File.createTempFile("page_", ".jpg", cacheDir)
+                file.outputStream().buffered().use { out ->
+                    check(bitmap.compress(Bitmap.CompressFormat.JPEG, 94, out)) { "jpeg encode failed" }
+                }
+                PageSnapshot(diagId, file, bitmap.width, bitmap.height)
+            }
+        }.onSuccess { pageSnapshot = it }
+            .onFailure { Timber.w(it, "Could not snapshot page for project") }
+    }
+
+    private suspend fun savePageSnapshotToProject(
+        diagId: Long?,
+        blocks: List<TextBlock>,
+        translatedTexts: Map<Int, String>,
+    ) {
+        val snapshot = pageSnapshot ?: return
+        if (diagId == null || snapshot.diagId != diagId) return
+        pageSnapshot = null
+        try {
+            val segments = blocks.mapIndexedNotNull { index, block ->
+                translatedTexts[index]
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { com.gameocr.app.gallery.GalleryTranslationSegment.from(block, it) }
+            }
+            if (segments.isEmpty()) {
+                snapshot.file.delete()
+                return
+            }
+            val item = galleryRepository.savePageFromScreen(
+                image = snapshot.file,
+                width = snapshot.width,
+                height = snapshot.height,
+                segments = segments,
+            )
+            withContext(Dispatchers.Main) {
+                overlay?.showInfoHint(getString(R.string.page_saved_hint, item.position + 1))
+            }
+        } catch (error: Throwable) {
+            Timber.w(error, "Could not save translated page to project")
+            snapshot.file.delete()
         }
     }
 
@@ -4169,6 +4232,7 @@ class CaptureService : Service() {
                     completed = completed,
                     diagId = diagId,
                 )
+                savePageSnapshotToProject(diagId, blocks, translatedMaskBlockTexts)
             },
         )
     }

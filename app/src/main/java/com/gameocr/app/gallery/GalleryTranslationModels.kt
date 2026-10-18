@@ -53,6 +53,12 @@ data class GalleryTranslationSegment(
     val confidence: Float,
     val recognizedLanguage: String? = null,
     val layoutOrientation: String? = null,
+    /** Caixa de texto ajustada à mão no editor; quando presente, a tradução é desenhada aqui. */
+    val renderBox: GalleryRect? = null,
+    /** Multiplicador do tamanho máximo da fonte (1 = automático). */
+    val fontScale: Float = 1f,
+    /** Efeito sonoro ou trecho que deve permanecer no original. */
+    val keepOriginal: Boolean = false,
 ) {
     companion object {
         fun from(block: TextBlock, translation: String?): GalleryTranslationSegment =

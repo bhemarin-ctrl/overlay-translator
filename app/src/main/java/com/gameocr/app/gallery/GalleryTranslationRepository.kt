@@ -116,6 +116,123 @@ class GalleryTranslationRepository @Inject constructor(
         )
     }
 
+    /**
+     * Salva uma página traduzida na leitura on-screen. Todas as páginas da mesma "sessão de leitura"
+     * (menos de 12 h desde a última) ficam num mesmo projeto, para exportar tudo de uma vez.
+     */
+    suspend fun savePageFromScreen(
+        image: File,
+        width: Int,
+        height: Int,
+        segments: List<GalleryTranslationSegment>,
+    ): GalleryTranslationItemEntity = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val existing = dao.latestTaskWithScopeLabel(READING_SCOPE_LABEL)
+            ?.takeIf { now - it.createdAtMs < READING_SESSION_MAX_AGE_MS }
+        val taskId = existing?.id ?: createReadingTask(now)
+        val position = dao.nextPosition(taskId)
+        val itemId = UUID.randomUUID().toString()
+        val targetDir = File(context.filesDir, "$TASK_FILES_DIR/$taskId/source").apply {
+            check(mkdirs() || isDirectory)
+        }
+        val target = File(targetDir, "$itemId.jpg")
+        check(image.renameTo(target) || image.copyTo(target, overwrite = true).exists()) {
+            "Cannot store page image."
+        }
+        val item = GalleryTranslationItemEntity(
+            id = itemId,
+            taskId = taskId,
+            position = position,
+            sourceUri = Uri.fromFile(target).toString(),
+            localPath = target.absolutePath,
+            displayName = String.format(java.util.Locale.ROOT, "pagina_%03d.jpg", position + 1),
+            status = GalleryItemStatus.SUCCEEDED,
+            attemptCount = 1,
+            originalWidth = width,
+            originalHeight = height,
+            processedWidth = width,
+            processedHeight = height,
+            sourceText = segments.joinToString("\n") { it.sourceText },
+            translatedText = segments.joinToString("\n") { it.translatedText },
+            segmentsJson = json.encodeToString(segments),
+            updatedAtMs = now,
+        )
+        dao.insertItem(item)
+        val progress = dao.progress(taskId)
+        dao.updateProgress(
+            taskId = taskId,
+            total = progress.total,
+            completed = progress.succeeded + progress.failed,
+            succeeded = progress.succeeded,
+            failed = progress.failed,
+            lastError = "",
+        )
+        dao.finishTask(taskId, GalleryTaskStatus.SUCCEEDED, now, "")
+        item
+    }
+
+    private suspend fun createReadingTask(now: Long): String {
+        val taskId = UUID.randomUUID().toString()
+        val settings = settingsRepository.get()
+        val activePreset = galleryTaskMatchingPreset(settings)
+        val snapshot = TranslationPresetCatalog.fromSettings(
+            id = "gallery_$taskId",
+            name = activePreset?.name.orEmpty(),
+            shortName = activePreset?.shortName.orEmpty(),
+            settings = settings,
+        )
+        val task = GalleryTranslationTaskEntity(
+            id = taskId,
+            createdAtMs = now,
+            startedAtMs = now,
+            finishedAtMs = now,
+            status = GalleryTaskStatus.SUCCEEDED,
+            sourceLang = settings.sourceLang,
+            targetLang = settings.targetLang,
+            ocrEngine = settings.ocrEngine.name,
+            translatorEngine = settings.translatorEngine.name,
+            presetName = activePreset?.name.orEmpty(),
+            settingsSnapshotJson = json.encodeToString(snapshot),
+            scopeLabel = READING_SCOPE_LABEL,
+            totalCount = 0,
+        )
+        settingsRepository.rememberSnapshotCredentials(snapshot, settings)
+        try {
+            dao.insertTask(task)
+        } catch (error: Throwable) {
+            settingsRepository.forgetSnapshotCredentials(snapshot.id)
+            throw error
+        }
+        return taskId
+    }
+
+    suspend fun getItem(itemId: String): GalleryTranslationItemEntity? = dao.getItem(itemId)
+
+    suspend fun lastReadingPage(): GalleryTranslationItemEntity? = withContext(Dispatchers.IO) {
+        val task = dao.latestTaskWithScopeLabel(READING_SCOPE_LABEL) ?: return@withContext null
+        dao.lastSucceededItem(task.id)
+    }
+
+    suspend fun updateItemSegments(itemId: String, segments: List<GalleryTranslationSegment>) =
+        withContext(Dispatchers.IO) {
+            val taskIdOfItem = dao.getItem(itemId)?.taskId
+            dao.updateSegments(
+                itemId = itemId,
+                translatedText = segments.joinToString("\n") { it.translatedText },
+                segmentsJson = json.encodeToString(segments),
+                now = System.currentTimeMillis(),
+            )
+            taskIdOfItem?.let { translatedPreviewStore.deleteItemPreview(it, itemId) }
+        }
+
+    suspend fun deleteItem(itemId: String) = withContext(Dispatchers.IO) {
+        val item = dao.getItem(itemId) ?: return@withContext
+        dao.deleteItem(itemId)
+        if (item.localPath.isNotBlank()) File(item.localPath).delete()
+        translatedPreviewStore.deleteItemPreview(item.taskId, itemId)
+        refreshProgress(item.taskId)
+    }
+
     suspend fun settingsForTask(task: GalleryTranslationTaskEntity): Settings {
         val current = settingsRepository.get()
         val snapshot = runCatching {
@@ -359,5 +476,7 @@ class GalleryTranslationRepository @Inject constructor(
 
     private companion object {
         const val TASK_FILES_DIR = "gallery_translation"
+        const val READING_SCOPE_LABEL = "tradutor_manga_leitura"
+        const val READING_SESSION_MAX_AGE_MS = 12L * 60L * 60L * 1000L
     }
 }

@@ -2098,4 +2098,5 @@
     <string name="translation_library_help_preserve_title">Keep source artwork</string>
     <string name="translation_library_help_preserve_body">An exact OCR-block match is not translated, displayed, or erased. This is intended for manga sound effects whose original lettering is part of the artwork. Matching ignores whitespace and safe edge punctuation, but never uses fuzzy or substring matching.</string>
     <string name="settings_search_item_floating_alpha">Floating button opacity</string>
+    <string name="page_saved_hint">Página %1$d salva</string>
 </resources>

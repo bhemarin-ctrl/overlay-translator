@@ -269,6 +269,41 @@ interface GalleryTranslationDao {
         return count
     }
 
+    @Query(
+        "SELECT * FROM gallery_translation_tasks WHERE scopeLabel = :label " +
+            "AND status != 'CANCELED' ORDER BY createdAtMs DESC LIMIT 1"
+    )
+    suspend fun latestTaskWithScopeLabel(label: String): GalleryTranslationTaskEntity?
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM gallery_translation_items WHERE taskId = :taskId")
+    suspend fun nextPosition(taskId: String): Int
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertItem(item: GalleryTranslationItemEntity)
+
+    @Query("SELECT * FROM gallery_translation_items WHERE id = :itemId LIMIT 1")
+    suspend fun getItem(itemId: String): GalleryTranslationItemEntity?
+
+    @Query(
+        "UPDATE gallery_translation_items SET translatedText = :translatedText, " +
+            "segmentsJson = :segmentsJson, updatedAtMs = :now WHERE id = :itemId"
+    )
+    suspend fun updateSegments(
+        itemId: String,
+        translatedText: String,
+        segmentsJson: String,
+        now: Long,
+    )
+
+    @Query(
+        "SELECT * FROM gallery_translation_items WHERE taskId = :taskId " +
+            "AND status = 'SUCCEEDED' ORDER BY position DESC LIMIT 1"
+    )
+    suspend fun lastSucceededItem(taskId: String): GalleryTranslationItemEntity?
+
+    @Query("DELETE FROM gallery_translation_items WHERE id = :itemId")
+    suspend fun deleteItem(itemId: String)
+
     @Query("SELECT COUNT(*) FROM gallery_translation_items WHERE sourceUri = :sourceUri")
     suspend fun countSourceUriReferences(sourceUri: String): Int
 
