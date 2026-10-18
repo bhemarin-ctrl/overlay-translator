@@ -83,6 +83,14 @@ android {
         }
     }
 
+    // Chave fixa de debug: todo APK gerado pelo CI tem a mesma assinatura e atualiza o anterior sem desinstalar.
+    signingConfigs.getByName("debug") {
+        storeFile = file("debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
