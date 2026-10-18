@@ -3653,6 +3653,7 @@ class CaptureService : Service() {
         diagId: Long?,
         blocks: List<TextBlock>,
         translatedTexts: Map<Int, String>,
+        orientationFor: (TextBlock) -> TextOrientation,
     ) {
         val snapshot = pageSnapshot ?: return
         if (diagId == null || snapshot.diagId != diagId) return
@@ -3661,7 +3662,10 @@ class CaptureService : Service() {
             val segments = blocks.mapIndexedNotNull { index, block ->
                 translatedTexts[index]
                     ?.takeIf { it.isNotBlank() }
-                    ?.let { com.gameocr.app.gallery.GalleryTranslationSegment.from(block, it) }
+                    ?.let {
+                        com.gameocr.app.gallery.GalleryTranslationSegment.from(block, it)
+                            .copy(outputOrientation = orientationFor(block).name)
+                    }
             }
             if (segments.isEmpty()) {
                 snapshot.file.delete()
@@ -4232,7 +4236,14 @@ class CaptureService : Service() {
                     completed = completed,
                     diagId = diagId,
                 )
-                savePageSnapshotToProject(diagId, blocks, translatedMaskBlockTexts)
+                savePageSnapshotToProject(diagId, blocks, translatedMaskBlockTexts) { block ->
+                    if (followBlockOrientations) {
+                        block.layoutOrientation?.takeUnless { it == TextOrientation.UNKNOWN }
+                            ?: delayedLayoutOrientation
+                    } else {
+                        delayedLayoutOrientation
+                    }
+                }
             },
         )
     }

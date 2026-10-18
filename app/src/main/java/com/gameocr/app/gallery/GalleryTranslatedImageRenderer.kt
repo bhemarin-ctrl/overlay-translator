@@ -88,7 +88,9 @@ class GalleryTranslatedImageRenderer @Inject constructor(
                 sourceBounds = bounds,
                 renderBounds = Rect(bounds),
                 sourceBoxes = sourceBoxes,
-                orientation = galleryExportOrientation(settings, segment.layoutOrientation),
+                orientation = segment.outputOrientation
+                    ?.let { name -> runCatching { TextOrientation.valueOf(name) }.getOrNull() }
+                    ?: galleryExportOrientation(settings, segment.layoutOrientation),
             )
         }
         val renderSegments = baseSegments.mapNotNull { segment ->
@@ -170,7 +172,13 @@ class GalleryTranslatedImageRenderer @Inject constructor(
             val minimumTextSizePx = (
                 ADAPTIVE_MIN_TEXT_SIZE_SP * scaledDensity
                 ).roundToInt().coerceIn(1, maximumTextSizePx)
-            val textStyle = effectiveSettings.overlayTextStyle.normalized()
+            val globalTextStyle = effectiveSettings.overlayTextStyle.normalized()
+            val textStyle = globalTextStyle.copy(
+                letterSpacingEm = (segment.source.letterSpacingEm ?: globalTextStyle.letterSpacingEm)
+                    .coerceIn(-0.15f, 0.6f),
+                lineSpacingMultiplier = (segment.source.lineSpacing ?: globalTextStyle.lineSpacingMultiplier)
+                    .coerceIn(0.7f, 2.2f),
+            )
             if (segment.orientation.isGalleryVertical()) {
                 drawVerticalTranslation(
                     canvas = canvas,

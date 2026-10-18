@@ -735,6 +735,44 @@ private fun SelectionPanel(vm: PageEditorViewModel) {
                 modifier = Modifier.weight(1f),
             )
         }
+        val vertical = (seg.outputOrientation ?: seg.layoutOrientation)?.startsWith("VERTICAL") == true
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Texto:", style = MaterialTheme.typography.bodySmall)
+            FilterChip(
+                selected = !vertical,
+                onClick = { vm.updateSelected { it.copy(outputOrientation = "HORIZONTAL_LTR") } },
+                label = { Text("Horizontal") },
+            )
+            FilterChip(
+                selected = vertical,
+                onClick = { vm.updateSelected { it.copy(outputOrientation = "VERTICAL_RTL") } },
+                label = { Text("Vertical") },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val letter = seg.letterSpacingEm ?: 0f
+            Text("Letras ${"%+.2f".format(Locale.ROOT, letter)}", style = MaterialTheme.typography.bodySmall)
+            Slider(
+                value = letter,
+                onValueChange = { v -> vm.updateSelected { it.copy(letterSpacingEm = (v * 100).roundToInt() / 100f) } },
+                valueRange = -0.1f..0.5f,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val line = seg.lineSpacing ?: 1f
+            Text("Linhas ×${"%.2f".format(Locale.ROOT, line)}", style = MaterialTheme.typography.bodySmall)
+            Slider(
+                value = line,
+                onValueChange = { v -> vm.updateSelected { it.copy(lineSpacing = (v * 20).roundToInt() / 20f) } },
+                valueRange = 0.7f..2.0f,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),

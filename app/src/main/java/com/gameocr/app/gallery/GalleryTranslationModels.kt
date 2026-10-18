@@ -59,6 +59,12 @@ data class GalleryTranslationSegment(
     val fontScale: Float = 1f,
     /** Efeito sonoro ou trecho que deve permanecer no original. */
     val keepOriginal: Boolean = false,
+    /** Orientação final da tradução (nome de TextOrientation); quando presente, ignora a regra global. */
+    val outputOrientation: String? = null,
+    /** Espaçamento entre caracteres em em (null = usa o estilo global). */
+    val letterSpacingEm: Float? = null,
+    /** Multiplicador do espaçamento entre linhas (null = usa o estilo global). */
+    val lineSpacing: Float? = null,
 ) {
     companion object {
         fun from(block: TextBlock, translation: String?): GalleryTranslationSegment =
