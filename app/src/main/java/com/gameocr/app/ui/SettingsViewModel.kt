@@ -54,8 +54,6 @@ import com.gameocr.app.llm.LlmModelInstaller
 import com.gameocr.app.llm.LlmModelKind
 import com.gameocr.app.ocr.OrientationModelInstaller
 import com.gameocr.app.ocr.PaddleModelInstaller
-import com.gameocr.app.ocr.lunaOcrHttpHostOrNull
-import com.gameocr.app.ocr.umiOcrHttpHostOrNull
 import com.gameocr.app.translate.RoutingTranslator
 import com.gameocr.app.translate.TestResult
 import com.gameocr.app.tts.ttsHttpHostOrNull
@@ -1178,8 +1176,8 @@ internal fun cleartextHostsWithLocalOcrUrls(
     ttsVolcengineBaseUrl: String = "",
 ): List<String> {
     val normalized = com.gameocr.app.data.CleartextHostPolicy.normalize(hosts)
-    val umiHost = umiOcrHttpHostOrNull(umiOcrBaseUrl)
-    val lunaHost = lunaOcrHttpHostOrNull(lunaOcrBaseUrl)
+    val umiHost: String? = null
+    val lunaHost: String? = null
     val ttsHost = ttsHttpHostOrNull(ttsHttpBaseUrl)
     val miniMaxTtsHost = ttsApiHttpHostOrNull(ttsMiniMaxBaseUrl)
     val mimoTtsHost = ttsApiHttpHostOrNull(ttsMimoBaseUrl)
