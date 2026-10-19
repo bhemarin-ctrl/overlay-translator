@@ -12,7 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.clipToBounds
@@ -527,7 +527,7 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(androidx.compose.ui.graphics.Color.White)
-            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.systemBars)
+            .systemBarsPadding()
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Row(
