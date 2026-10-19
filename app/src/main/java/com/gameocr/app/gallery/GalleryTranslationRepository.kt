@@ -61,7 +61,7 @@ class GalleryTranslationRepository @Inject constructor(
     suspend fun getItems(taskId: String): List<GalleryTranslationItemEntity> = dao.getItems(taskId)
 
     suspend fun createTask(uriStrings: List<String>): GalleryPreparedTask = withContext(Dispatchers.IO) {
-        val selected = GalleryTranslationWorkPolicy.normalizeSelection(uriStrings)
+        val selected = GalleryTranslationWorkPolicy.normalizeSelection(expandEpubs(uriStrings))
         require(selected.isNotEmpty()) { "No images selected." }
 
         val taskId = UUID.randomUUID().toString()
@@ -435,6 +435,25 @@ class GalleryTranslationRepository @Inject constructor(
                 updatedAtMs = now,
             )
         }
+    }
+
+    /** Troca cada EPUB selecionado pelas imagens das suas páginas (arquivos locais, em ordem de leitura). */
+    private fun expandEpubs(uriStrings: List<String>): List<String> = uriStrings.flatMap { uriString ->
+        val uri = Uri.parse(uriString)
+        val name = displayName(uri)
+        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+        if (!EpubImageExtractor.isEpub(name, mime)) return@flatMap listOf(uriString)
+        runCatching {
+            val workDir = File(context.filesDir, "$TASK_FILES_DIR/epub_${UUID.randomUUID()}").apply { mkdirs() }
+            val epubCopy = File(workDir, "book.epub")
+            context.contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "Cannot open EPUB." }
+                FileOutputStream(epubCopy).use(input::copyTo)
+            }
+            val pages = EpubImageExtractor.extract(epubCopy, File(workDir, "pages"))
+            epubCopy.delete()
+            pages.map { Uri.fromFile(it).toString() }
+        }.onFailure { Timber.w(it, "EPUB extraction failed") }.getOrDefault(emptyList())
     }
 
     private fun persistReadPermission(uri: Uri): Boolean {

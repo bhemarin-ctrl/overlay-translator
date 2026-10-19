@@ -7,7 +7,7 @@ import java.io.IOException
 internal object GalleryTranslationWorkPolicy {
     const val ACTION_SEND = "android.intent.action.SEND"
     const val ACTION_SEND_MULTIPLE = "android.intent.action.SEND_MULTIPLE"
-    const val MAX_IMAGES_PER_TASK = 100
+    const val MAX_IMAGES_PER_TASK = 600
     const val MAX_RETRY_ATTEMPTS = 3
     const val FOREGROUND_IMAGE_THRESHOLD = 10
     const val WORK_TAG = "gallery_translation"

@@ -38,6 +38,7 @@ import kotlin.math.roundToInt
 class GalleryTranslatedImageRenderer @Inject constructor(
     @ApplicationContext private val context: Context,
     private val overlayFontManager: OverlayFontManager,
+    val lama: com.gameocr.app.inpaint.LamaInpainter,
 ) {
 
     fun render(
@@ -153,20 +154,15 @@ class GalleryTranslatedImageRenderer @Inject constructor(
         val floatingStyles = renderSegments.map { segment ->
             if (segment.source.keepOriginal) null else detectFloatingText(source, segment.sourceBounds)
         }
+        val lamaRects = renderSegments.indices
+            .filter { floatingStyles[it] != null }
+            .flatMap { renderSegments[it].sourceBoxes }
+        if (lamaRects.isNotEmpty()) lama.inpaint(output, source, lamaRects)
         renderSegments.forEachIndexed { index, segment ->
             val adaptiveStyle = adaptiveStyles.getOrNull(index)
             val floating = floatingStyles.getOrNull(index)
             if (floating != null) {
-                val patch = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = floating.patchColor
-                    this.style = Paint.Style.FILL
-                }
-                (segment.sourceBoxes + segment.renderBounds).forEach { box ->
-                    canvas.drawRoundRect(
-                        box.left.toFloat(), box.top.toFloat(), box.right.toFloat(), box.bottom.toFloat(),
-                        8f, 8f, patch,
-                    )
-                }
+                // Texto solto sobre a arte: sem preenchimento (o LaMa limpa o original antes).
             } else if (adaptiveStyle != null) {
                 drawAdaptiveBackground(canvas, segment, adaptiveStyle)
             } else {

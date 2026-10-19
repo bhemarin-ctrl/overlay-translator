@@ -175,9 +175,7 @@ fun GalleryTranslationConfirmScreen(
     var showPresetSwitcher by rememberSaveable { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia(
-            GalleryTranslationWorkPolicy.MAX_IMAGES_PER_TASK
-        )
+        ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
             onSelectionChanged(
@@ -446,11 +444,7 @@ fun GalleryTranslationConfirmScreen(
                                         modifier = Modifier.width(itemWidth),
                                         enabled = !creating,
                                         onClick = {
-                                            picker.launch(
-                                                PickVisualMediaRequest(
-                                                    ActivityResultContracts.PickVisualMedia.ImageOnly
-                                                )
-                                            )
+                                            picker.launch(arrayOf("image/*", "application/epub+zip"))
                                         },
                                     )
                                 }
@@ -813,9 +807,7 @@ fun GalleryTranslationTasksScreen(
 ) {
     val tasks by viewModel.tasks.collectAsState(initial = emptyList())
     val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia(
-            GalleryTranslationWorkPolicy.MAX_IMAGES_PER_TASK
-        )
+        ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) onImagesSelected(uris.map(Uri::toString))
     }
@@ -833,9 +825,7 @@ fun GalleryTranslationTasksScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            picker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
+                            picker.launch(arrayOf("image/*", "application/epub+zip"))
                         }
                     ) {
                         Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
@@ -1043,6 +1033,17 @@ fun GalleryTranslationTaskDetailScreen(
                     }
                 },
                 actions = {
+                    val firstDone = items.firstOrNull {
+                        it.status == com.gameocr.app.gallery.GalleryItemStatus.SUCCEEDED
+                    }
+                    TextButton(
+                        enabled = firstDone != null,
+                        onClick = {
+                            firstDone?.let {
+                                context.startActivity(PageEditorActivity.intent(context, it.id))
+                            }
+                        },
+                    ) { Text("Editar páginas") }
                     Box {
                         IconButton(onClick = { actionsExpanded = true }) {
                             Icon(

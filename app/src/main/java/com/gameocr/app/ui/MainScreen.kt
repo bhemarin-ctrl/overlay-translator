@@ -201,9 +201,7 @@ fun MainScreen(
     val featuredGalleryTask =
         (featuredGalleryTaskState as? MainGalleryTaskLoadState.Loaded)?.task
     val galleryPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia(
-            GalleryTranslationWorkPolicy.MAX_IMAGES_PER_TASK
-        )
+        ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) onGalleryImagesSelected(uris.map { it.toString() })
     }
@@ -820,11 +818,7 @@ fun MainScreen(
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
-                        galleryPicker.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
-                            )
-                        )
+                        galleryPicker.launch(arrayOf("image/*", "application/epub+zip"))
                     },
                 ) {
                     Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)

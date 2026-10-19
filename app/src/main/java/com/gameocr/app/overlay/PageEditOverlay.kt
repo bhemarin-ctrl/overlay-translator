@@ -403,7 +403,8 @@ private fun EditCanvasLayer(core: PageEditorCore, editing: Boolean) {
                         drag = OverlayDrag.NONE
                         if (seg != null) {
                             val r = toViewRect(core.effectiveBox(seg))
-                            fun near(c: Offset) = (c - start).getDistance() <= handleRadiusPx
+                            val radius = min(handleRadiusPx, min(r.width, r.height) * 0.28f)
+                            fun near(c: Offset) = (c - start).getDistance() <= radius
                             drag = when {
                                 near(r.topLeft) -> OverlayDrag.TL
                                 near(r.topRight) -> OverlayDrag.TR

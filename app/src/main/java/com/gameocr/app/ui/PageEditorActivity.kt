@@ -12,6 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -321,6 +325,30 @@ class PageEditorCore(
             .onFailure { Timber.w(it, "Editor save failed") }
     }
 
+    var lamaInstalled by mutableStateOf(renderer.lama.isInstalled())
+        private set
+
+    fun installLama() {
+        if (busy) return
+        scope.launch {
+            busy = true
+            message = "Baixando LaMa (~200 MB)…"
+            try {
+                renderer.lama.download { done, total ->
+                    if (total > 0) message = "Baixando LaMa… ${(done * 100 / total).toInt()}%"
+                }
+                lamaInstalled = true
+                message = "LaMa instalado. Falas fora de balão agora têm o texto original apagado."
+                scheduleRender()
+            } catch (error: Throwable) {
+                Timber.w(error, "LaMa download failed")
+                message = "Falha ao baixar o LaMa: ${error.message}"
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     private fun scheduleRender() {
         renderJob?.cancel()
         renderJob = scope.launch {
@@ -499,6 +527,7 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(androidx.compose.ui.graphics.Color.White)
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.systemBars)
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Row(
@@ -512,11 +541,21 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
             )
-            OutlinedButton(onClick = { vm.goToPage(-1) }, enabled = vm.pageIndex > 0) { Text("‹") }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = { vm.goToPage(-1) },
+                enabled = vm.pageIndex > 0,
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Text("‹  Página anterior", style = MaterialTheme.typography.titleSmall) }
             OutlinedButton(
                 onClick = { vm.goToPage(1) },
                 enabled = vm.pageIndex < vm.pageCount - 1,
-            ) { Text("›") }
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Text("Próxima página  ›", style = MaterialTheme.typography.titleSmall) }
         }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -525,6 +564,9 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
             OutlinedButton(onClick = { vm.zoom = max(1f, vm.zoom - 0.5f); if (vm.zoom == 1f) vm.pan = Offset.Zero }) { Text("Zoom −") }
             OutlinedButton(onClick = { vm.zoom = min(5f, vm.zoom + 0.5f) }) { Text("Zoom +") }
             OutlinedButton(onClick = { vm.addBubble() }) { Text("+ Balão") }
+            if (!vm.lamaInstalled) {
+                OutlinedButton(onClick = { vm.installLama() }, enabled = !vm.busy) { Text("Instalar LaMa") }
+            }
             FilterChip(
                 selected = vm.showOriginal,
                 onClick = { vm.showOriginal = !vm.showOriginal },
@@ -543,7 +585,7 @@ private fun PageEditorScreen(viewModel: PageEditorCore, onClose: () -> Unit) {
         if (vm.busy) Text("Processando…", style = MaterialTheme.typography.bodySmall)
         EditorCanvas(vm = vm, modifier = Modifier.weight(1f).fillMaxWidth())
         HorizontalDivider()
-        SelectionPanel(vm = vm)
+        Box(modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)) { SelectionPanel(vm = vm) }
     }
     if (confirmDelete) {
         androidx.compose.material3.AlertDialog(
@@ -597,6 +639,7 @@ private fun EditorCanvas(vm: PageEditorCore, modifier: Modifier) {
 
     Canvas(
         modifier = modifier
+            .clipToBounds()
             .background(Color(0xFFEFEFEF))
             .onSizeChanged { viewSize = it }
             .pointerInput(Unit) {
@@ -621,7 +664,8 @@ private fun EditorCanvas(vm: PageEditorCore, modifier: Modifier) {
                         dragMode = DragMode.PAN
                         if (seg != null) {
                             val r = boxOnView(vm.effectiveBox(seg))
-                            fun near(c: Offset) = (c - start).getDistance() <= handleRadiusPx
+                            val radius = min(handleRadiusPx, min(r.width, r.height) * 0.28f)
+                            fun near(c: Offset) = (c - start).getDistance() <= radius
                             dragMode = when {
                                 near(r.topLeft) -> DragMode.RESIZE_TL
                                 near(r.topRight) -> DragMode.RESIZE_TR
@@ -734,8 +778,8 @@ private fun SelectionPanel(vm: PageEditorCore) {
         if (seg.sourceText.isNotBlank()) {
             Text(
                 "Original: ${seg.sourceText}",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 3,
             )
         }
         OutlinedTextField(

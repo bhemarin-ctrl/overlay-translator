@@ -91,6 +91,7 @@ import com.gameocr.app.ocr.BitmapPreprocessor
 import com.gameocr.app.ocr.MangaOcrEngine
 import com.gameocr.app.ocr.MangaDelayedMaskDebugSessionManager
 import com.gameocr.app.ocr.MangaOcrModelInstaller
+import com.gameocr.app.ocr.PageNumberFilter
 import com.gameocr.app.ocr.MangaOcrStartupPolicy
 import com.gameocr.app.ocr.LocalTextBackgroundRepairer
 import com.gameocr.app.ocr.OcrEngine
@@ -3304,7 +3305,7 @@ class CaptureService : Service() {
                 originalWidth = workBitmap.width,
                 originalHeight = workBitmap.height,
                 counterClockwiseDegrees = contentRotationDegrees,
-            )
+            ).filterNot { PageNumberFilter.isPageNumber(it.text, it.boundingBox, workBitmap.height) }
             if (settings.preprocess.upscale2x) {
                 logVerticalBlocks(diagId, "scaledBlocks for overlay", blocks)
             }
@@ -4227,11 +4228,6 @@ class CaptureService : Service() {
                 translatedText = translatedText,
                 unit = unit,
             ).forEach { update ->
-                // Efeitos sonoros: o modelo devolve o texto original sem traduzir; não desenhamos nada.
-                val original = blocks.getOrNull(update.blockIndex)?.text
-                    ?.filterNot { it.isWhitespace() }.orEmpty()
-                val returned = update.text.filterNot { it.isWhitespace() }
-                if (original.isNotEmpty() && original == returned) return@forEach
                 translatedMaskBlockTexts[update.blockIndex] = update.text
             }
         }

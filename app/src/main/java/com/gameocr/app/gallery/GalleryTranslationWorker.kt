@@ -142,10 +142,13 @@ class GalleryTranslationWorker @AssistedInject constructor(
                     kind = settings.ocrEngine,
                     settings = settings,
                 )
+                val pageHeightPx = decoded.bitmap.height
                 val blocks = if (preprocessOptions.upscale2x) {
                     rawBlocks.map(::downscaleTwo)
                 } else {
                     rawBlocks
+                }.filterNot {
+                    com.gameocr.app.ocr.PageNumberFilter.isPageNumber(it.text, it.boundingBox, pageHeightPx)
                 }
                 if (blocks.isEmpty()) throw NoTextDetectedException()
                 val visualPreparation = withContext(Dispatchers.Default) {
