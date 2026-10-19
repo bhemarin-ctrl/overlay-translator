@@ -41,6 +41,15 @@ class LamaInpainter @Inject constructor(
 
     fun isInstalled(): Boolean = modelFile.isFile && modelFile.length() > MIN_MODEL_BYTES
 
+    fun sizeMb(): Long = if (modelFile.isFile) modelFile.length() / (1024 * 1024) else 0L
+
+    fun delete() {
+        synchronized(lock) {
+            closeSession()
+            modelFile.delete()
+        }
+    }
+
     suspend fun download(onProgress: (downloaded: Long, total: Long) -> Unit) = withContext(Dispatchers.IO) {
         val target = modelFile
         val part = File(target.parentFile, "$MODEL_NAME.part")

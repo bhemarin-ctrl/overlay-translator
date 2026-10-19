@@ -91,6 +91,7 @@ class SettingsViewModel @Inject constructor(
     private val repo: SettingsRepository,
     private val paddleInstaller: PaddleModelInstaller,
     private val mangaOcrInstaller: com.gameocr.app.ocr.MangaOcrModelInstaller,
+    val lamaInpainter: com.gameocr.app.inpaint.LamaInpainter,
     private val orientationModelInstaller: OrientationModelInstaller,
     private val routingTranslator: RoutingTranslator,
     private val connectionTester: com.gameocr.app.translate.TranslatorConnectionTester,

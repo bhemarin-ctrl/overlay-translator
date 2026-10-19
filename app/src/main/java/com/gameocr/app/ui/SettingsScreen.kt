@@ -5059,6 +5059,8 @@ fun SettingsScreen(
                     )
                 }
 
+                LamaSection(lama = viewModel.lamaInpainter)
+
                 if (ocrEngine == OcrEngineKind.MANGA_OCR_JA) {
                     MangaOcrSection(
                         status = statusDuringBackgroundDownload(
@@ -11758,6 +11760,65 @@ private fun PaddleSection(
 }
 
 /** manga-ocr 端侧 OCR Section。与 [PaddleSection] 一一对应；唯一差异在文案与状态格式（MB vs KB）。 */
+@Composable
+private fun LamaSection(lama: com.gameocr.app.inpaint.LamaInpainter) {
+    val scope = rememberCoroutineScope()
+    var ready by remember { mutableStateOf(lama.isInstalled()) }
+    var downloading by remember { mutableStateOf(false) }
+    var status by remember {
+        mutableStateOf(
+            if (lama.isInstalled()) "LaMa instalado (${lama.sizeMb()} MB)" else "LaMa não instalado"
+        )
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "LaMa — apaga o texto original das falas fora de balão",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            if (downloading) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Box(modifier = Modifier.size(8.dp))
+            }
+            Text(status, style = MaterialTheme.typography.bodyMedium)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                enabled = !ready && !downloading,
+                onClick = {
+                    scope.launch {
+                        downloading = true
+                        status = "Baixando LaMa (~200 MB)…"
+                        try {
+                            lama.download { done, total ->
+                                if (total > 0) status = "Baixando LaMa… ${(done * 100 / total).toInt()}%"
+                            }
+                            ready = true
+                            status = "LaMa instalado (${lama.sizeMb()} MB)"
+                        } catch (t: Throwable) {
+                            if (t is kotlinx.coroutines.CancellationException) throw t
+                            status = "Falha ao baixar o LaMa: ${t.message ?: t.javaClass.simpleName}"
+                        } finally {
+                            downloading = false
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            ) { Text(if (downloading) "Baixando…" else "Baixar LaMa") }
+            OutlinedButton(
+                enabled = ready && !downloading,
+                onClick = {
+                    lama.delete()
+                    ready = false
+                    status = "LaMa não instalado"
+                },
+                modifier = Modifier.weight(1f),
+            ) { Text("Excluir") }
+        }
+    }
+}
+
 @Composable
 private fun MangaOcrSection(
     status: String,
