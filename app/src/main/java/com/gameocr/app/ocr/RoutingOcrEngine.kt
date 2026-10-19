@@ -23,18 +23,9 @@ import timber.log.Timber
  */
 @Singleton
 class RoutingOcrEngine @Inject constructor(
-    private val mlKit: MlKitOcrEngine,
-    private val baidu: BaiduOcrEngine,
-    private val tencent: TencentOcrEngine,
-    private val paddle: PaddleOcrEngine,
-    private val paddleAiStudio: PaddleAiStudioOcrEngine,
-    private val youdao: YoudaoOcrEngine,
-    private val umi: UmiOcrEngine,
-    private val luna: LunaOcrEngine,
     private val manga: MangaOcrEngine,
     private val settingsRepository: SettingsRepository,
     private val performanceDiagnostics: RuntimePerformanceDiagnostics,
-    private val automatic: AutomaticOcrRecognizer,
 ) : OcrEngine {
 
     override suspend fun recognize(bitmap: Bitmap, kind: OcrEngineKind): List<TextBlock> {
@@ -52,12 +43,12 @@ class RoutingOcrEngine @Inject constructor(
         kind: OcrEngineKind,
         settings: Settings,
     ): List<TextBlock> {
+        // Tradutor Manga: qualquer pedido (inclusive predefinições antigas) usa o Manga OCR.
+        @Suppress("NAME_SHADOWING")
+        val kind = OcrEngineKind.MANGA_OCR_JA
         val ocrStartedAt = SystemClock.elapsedRealtime()
-        val autoResult = if (kind == OcrEngineKind.ML_KIT_AUTO) {
-            automatic.recognize(bitmap, settings, ::recognizeRaw)
-        } else null
-        val raw = autoResult?.blocks ?: recognizeRaw(bitmap, kind, settings)
-        val mergeMangaFreeText = autoResult?.manga ?: (kind == OcrEngineKind.MANGA_OCR_JA)
+        val raw = recognizeRaw(bitmap, kind, settings)
+        val mergeMangaFreeText = true
         performanceDiagnostics.observe(
             stage = RuntimePerformanceStage.OCR,
             operationKey = RuntimePerformanceKeyPolicy.bitmap(
@@ -119,17 +110,7 @@ class RoutingOcrEngine @Inject constructor(
     }
 
     private suspend fun recognizeRaw(bitmap: Bitmap, kind: OcrEngineKind, settings: Settings): List<TextBlock> =
-        when (kind) {
-            OcrEngineKind.BAIDU -> baidu.recognize(bitmap, kind, settings)
-            OcrEngineKind.TENCENT -> tencent.recognize(bitmap, kind, settings)
-            OcrEngineKind.YOUDAO -> youdao.recognize(bitmap, kind, settings)
-            OcrEngineKind.UMI_OCR -> umi.recognize(bitmap, kind, settings)
-            OcrEngineKind.LUNA_OCR -> luna.recognize(bitmap, kind, settings)
-            OcrEngineKind.PADDLE_AI_STUDIO -> paddleAiStudio.recognize(bitmap, kind, settings)
-            OcrEngineKind.PADDLE_ONNX -> paddle.recognize(bitmap, kind, settings)
-            OcrEngineKind.MANGA_OCR_JA -> manga.recognize(bitmap, kind, settings)
-            else -> mlKit.recognize(bitmap, kind, settings)
-        }
+        manga.recognize(bitmap, kind, settings)
 
     private fun logBoxes(label: String, blocks: List<TextBlock>) {
         blocks.forEachIndexed { i, b ->
@@ -147,13 +128,6 @@ class RoutingOcrEngine @Inject constructor(
         text.replace("\r", "\\r").replace("\n", "\\n").take(limit)
 
     override fun close() {
-        mlKit.close()
-        baidu.close()
-        tencent.close()
-        paddle.close()
-        youdao.close()
-        umi.close()
-        luna.close()
         manga.close()
     }
 

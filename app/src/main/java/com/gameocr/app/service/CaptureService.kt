@@ -301,30 +301,56 @@ class CaptureService : Service() {
     @Inject lateinit var appJson: kotlinx.serialization.json.Json
     private var pageEditOverlay: com.gameocr.app.overlay.PageEditOverlay? = null
 
+    private fun newPageEditOverlay(): Pair<com.gameocr.app.ui.PageEditorCore, com.gameocr.app.overlay.PageEditOverlay> {
+        val core = com.gameocr.app.ui.PageEditorCore(
+            mainScope, applicationContext, galleryRepository, galleryImageDecoder, galleryRenderer, appJson,
+        )
+        val overlayEditor = com.gameocr.app.overlay.PageEditOverlay(
+            context = this@CaptureService,
+            core = core,
+            onOpenFullEditor = { id ->
+                dismissPageEditOverlay()
+                startActivity(
+                    com.gameocr.app.ui.PageEditorActivity.intent(this@CaptureService, id)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            },
+        )
+        return core to overlayEditor
+    }
+
     /** Abre/fecha o editor transparente sobre o leitor (nova instância a cada abertura = sempre a última página). */
     private fun togglePageEditOverlay() {
         mainScope.launch {
             val current = pageEditOverlay
             if (current != null && current.isShowing) {
-                dismissPageEditOverlay()
+                if (current.isEditing) dismissPageEditOverlay() else current.startEditing()
                 return@launch
             }
-            val core = com.gameocr.app.ui.PageEditorCore(
-                mainScope, applicationContext, galleryRepository, galleryImageDecoder, galleryRenderer, appJson,
-            )
-            val overlayEditor = com.gameocr.app.overlay.PageEditOverlay(
-                context = this@CaptureService,
-                core = core,
-                onOpenFullEditor = { id ->
-                    dismissPageEditOverlay()
-                    startActivity(
-                        com.gameocr.app.ui.PageEditorActivity.intent(this@CaptureService, id)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                },
-            )
+            val (_, overlayEditor) = newPageEditOverlay()
             pageEditOverlay = overlayEditor
             overlayEditor.show(null)
+        }
+    }
+
+    /**
+     * Com o LaMa instalado, a página traduzida é mostrada já limpa (texto original apagado e tradução
+     * sobre a imagem, sem caixa de fundo) no lugar da camada rápida de tradução.
+     */
+    private fun showCleanedPageOverlay(itemId: String) {
+        mainScope.launch {
+            dismissPageEditOverlay()
+            val (core, overlayEditor) = newPageEditOverlay()
+            pageEditOverlay = overlayEditor
+            overlayEditor.show(itemId, viewOnly = true)
+            var waits = 0
+            while (core.rendered == null && waits < 240) {
+                delay(250)
+                waits++
+            }
+            if (core.rendered != null && pageEditOverlay === overlayEditor) {
+                overlay?.clearForCapture(preserveFloatingWindow = true)
+            }
         }
     }
 
@@ -3715,6 +3741,7 @@ class CaptureService : Service() {
             )
             withContext(Dispatchers.Main) {
                 overlay?.showInfoHint(getString(R.string.page_saved_hint, item.position + 1))
+                if (galleryRenderer.lama.isInstalled()) showCleanedPageOverlay(item.id)
             }
         } catch (error: Throwable) {
             Timber.w(error, "Could not save translated page to project")

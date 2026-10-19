@@ -4505,7 +4505,7 @@ fun SettingsScreen(
                     modifier = Modifier.alpha(if (ocrSectionDisabled) 0.5f else 1f)
                 ) {
                 // Manual chips and automatic routing share the same names, groups and order.
-                OcrEngineGroup.entries.forEach { group ->
+                OcrEngineGroup.entries.filter { OcrEngineCatalog.optionsIn(it).isNotEmpty() }.forEach { group ->
                     Text(
                         stringResource(when (group) {
                             OcrEngineGroup.ON_DEVICE -> R.string.settings_ocr_group_local

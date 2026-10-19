@@ -969,8 +969,8 @@ class SettingsRepository internal constructor(
                         .getOrNull()
                 }
                 ?: default.openAiRequestOptions,
-            ocrEngine = runCatching { OcrEngineKind.valueOf(this[Keys.OcrEngine] ?: "") }
-                .getOrDefault(default.ocrEngine),
+            // Tradutor Manga: o único motor de OCR é o Manga OCR.
+            ocrEngine = OcrEngineKind.MANGA_OCR_JA,
             autoOcr = runCatching {
                 json.decodeFromString<AutoOcrSettings>(this[Keys.AutoOcr] ?: "{}").normalized()
             }.getOrDefault(default.autoOcr),

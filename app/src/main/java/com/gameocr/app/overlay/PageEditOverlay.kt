@@ -109,16 +109,16 @@ class PageEditOverlay(
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-    fun show(itemId: String?) {
+    fun show(itemId: String?, viewOnly: Boolean = false) {
         if (isShowing) {
-            startEditing()
+            if (!viewOnly) startEditing()
             return
         }
         if (itemId != null) core.open(itemId) else core.openLastReadingPage()
         owner.resume()
-        editing.value = true
+        editing.value = !viewOnly
         addCanvas()
-        addPanel()
+        if (viewOnly) setCanvasTouchable(false) else addPanel()
     }
 
     /** Volta a permitir edição (reabre o painel) sem recarregar a página. */
