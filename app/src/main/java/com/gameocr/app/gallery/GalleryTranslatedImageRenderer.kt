@@ -154,15 +154,19 @@ class GalleryTranslatedImageRenderer @Inject constructor(
         val floatingStyles = renderSegments.map { segment ->
             if (segment.source.keepOriginal) null else detectFloatingText(source, segment.sourceBounds)
         }
-        val lamaRects = renderSegments.indices
-            .filter { floatingStyles[it] != null }
-            .flatMap { renderSegments[it].sourceBoxes }
-        if (lamaRects.isNotEmpty()) lama.inpaint(output, source, lamaRects)
+        // Com o LaMa instalado, o texto original é apagado por inpainting e o texto traduzido é
+        // desenhado direto sobre a imagem limpa, sem caixa de fundo (fundo transparente).
+        val lamaCleaned = lama.isInstalled() && run {
+            val rects = renderSegments.filter { !it.source.keepOriginal }.flatMap { it.sourceBoxes }
+            rects.isNotEmpty() && lama.inpaint(output, source, rects)
+        }
         renderSegments.forEachIndexed { index, segment ->
             val adaptiveStyle = adaptiveStyles.getOrNull(index)
             val floating = floatingStyles.getOrNull(index)
-            if (floating != null) {
-                // Texto solto sobre a arte: sem preenchimento (o LaMa limpa o original antes).
+            if (lamaCleaned) {
+                // Fundo transparente: nada a preencher.
+            } else if (floating != null) {
+                // Sem LaMa, texto solto fica sem preenchimento.
             } else if (adaptiveStyle != null) {
                 drawAdaptiveBackground(canvas, segment, adaptiveStyle)
             } else {

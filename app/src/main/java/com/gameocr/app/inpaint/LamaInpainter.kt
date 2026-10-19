@@ -194,7 +194,7 @@ class LamaInpainter @Inject constructor(
 
     private companion object {
         const val SIZE = 512
-        const val MASK_DILATE_PX = 4
+        const val MASK_DILATE_PX = 6
         const val MODEL_NAME = "lama_fp32.onnx"
         const val MODEL_URL = "https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx"
         const val MIN_MODEL_BYTES = 50L * 1024 * 1024
