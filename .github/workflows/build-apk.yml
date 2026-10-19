@@ -31,7 +31,16 @@ jobs:
         run: |
           [ -f local.properties ] || echo "sdk.dir=$ANDROID_HOME" > local.properties
       - name: Assemble debug
-        run: ./gradlew --no-daemon assembleDebug
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" != "0" ]; then
+            msg=$(grep -E "^e: |error:|FAILED|What went wrong" -A2 build.log | head -c 3800 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=Kotlin errors::$msg"
+          fi
+          exit $code
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk tradutor-manga.apk
       - uses: actions/upload-artifact@v4
