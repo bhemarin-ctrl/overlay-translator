@@ -4485,279 +4485,6 @@ fun SettingsScreen(
             // 灰显 + 禁用 chip 让用户一眼明白 + 不能误操作。
             }
 
-            item(key = SectionKeys.TTS) {
-                SettingsSearchTarget(searchTargetRegistry, *SEARCH_TARGET_TTS) {
-                    SectionCard(title = stringResource(R.string.settings_section_tts)) {
-                        TtsSettings(
-                            enabled = ttsEnabled,
-                            onEnabledChange = { ttsEnabled = it },
-                            provider = ttsProvider,
-                            onProviderChange = { nextProvider ->
-                                if (shouldResetTtsTestFeedback(ttsProvider, nextProvider)) {
-                                    ttsTestGeneration++
-                                    viewModel.stopTts()
-                                    ttsProvider = nextProvider
-                                    ttsTestRunning = false
-                                    ttsTestMessage = null
-                                    ttsTestSuccess = false
-                                }
-                            },
-                            voice = ttsVoice,
-                            onVoiceChange = { ttsVoice = it },
-                            systemVoices = systemTtsVoices,
-                            systemVoicesLoading = systemTtsVoicesLoading,
-                            systemVoicesError = systemTtsVoicesError,
-                            onRefreshSystemVoices = { systemTtsVoiceRefreshRequest++ },
-                            testText = ttsTestText,
-                            previewLanguageTag = targetLang,
-                            onTestTextChange = {
-                                ttsTestText = it
-                                ttsTestMessage = null
-                            },
-                            testRunning = ttsTestRunning,
-                            testMessage = ttsTestMessage,
-                            testSuccess = ttsTestSuccess,
-                            onTest = { text ->
-                                val draftSettings = buildSnapshot()
-                                val generation = ttsTestGeneration + 1
-                                ttsTestGeneration = generation
-                                ttsTestRunning = true
-                                ttsTestMessage = null
-                                scope.launch {
-                                    try {
-                                        viewModel.testTts(text, draftSettings)
-                                        if (generation == ttsTestGeneration) {
-                                            ttsTestSuccess = true
-                                            ttsTestMessage = context.getString(
-                                                R.string.settings_tts_test_success
-                                            )
-                                        }
-                                    } catch (error: CancellationException) {
-                                        throw error
-                                    } catch (error: Throwable) {
-                                        if (generation == ttsTestGeneration) {
-                                            ttsTestSuccess = false
-                                            ttsTestMessage = context.ttsFailureMessage(error)
-                                        }
-                                    } finally {
-                                        if (generation == ttsTestGeneration) {
-                                            ttsTestRunning = false
-                                        }
-                                    }
-                                }
-                            },
-                            emotion = ttsEmotion,
-                            onEmotionChange = { ttsEmotion = it },
-                            speed = ttsSpeed,
-                            onSpeedChange = { ttsSpeed = it },
-                            pitch = ttsPitch,
-                            onPitchChange = { ttsPitch = it },
-                            gainDb = ttsGainDb,
-                            onGainDbChange = { ttsGainDb = it },
-                            httpBaseUrl = ttsHttpBaseUrl,
-                            onHttpBaseUrlChange = { ttsHttpBaseUrl = it },
-                            httpBearerToken = ttsHttpBearerToken,
-                            onHttpBearerTokenChange = { ttsHttpBearerToken = it },
-                            httpResponseMode = ttsHttpResponseMode,
-                            onHttpResponseModeChange = { ttsHttpResponseMode = it },
-                            volcengineResource = ttsVolcengineResource,
-                            onVolcengineResourceChange = { ttsVolcengineResource = it },
-                            volcengineBaseUrl = ttsVolcengineBaseUrl,
-                            onVolcengineBaseUrlChange = { ttsVolcengineBaseUrl = it },
-                            volcengineApiKey = ttsVolcengineApiKey,
-                            onVolcengineApiKeyChange = { ttsVolcengineApiKey = it },
-                            volcengineSpeaker = ttsVolcengineSpeaker,
-                            onVolcengineSpeakerChange = { ttsVolcengineSpeaker = it },
-                            volcengineModel = ttsVolcengineModel,
-                            onVolcengineModelChange = { ttsVolcengineModel = it },
-                            volcengineContext = ttsVolcengineContext,
-                            onVolcengineContextChange = { ttsVolcengineContext = it },
-                            volcenginePitch = ttsVolcenginePitch,
-                            onVolcenginePitchChange = { ttsVolcenginePitch = it },
-                            volcengineToneFidelity = ttsVolcengineToneFidelity,
-                            onVolcengineToneFidelityChange = { ttsVolcengineToneFidelity = it },
-                            miniMaxModel = ttsMiniMaxModel,
-                            onMiniMaxModelChange = { ttsMiniMaxModel = it },
-                            miniMaxBaseUrl = ttsMiniMaxBaseUrl,
-                            onMiniMaxBaseUrlChange = { ttsMiniMaxBaseUrl = it },
-                            miniMaxApiKey = ttsMiniMaxApiKey,
-                            onMiniMaxApiKeyChange = { ttsMiniMaxApiKey = it },
-                            miniMaxVoice = ttsMiniMaxVoice,
-                            onMiniMaxVoiceChange = { ttsMiniMaxVoice = it },
-                            onLoadMiniMaxManagedVoices = viewModel::loadMiniMaxManagedVoices,
-                            onCloneMiniMaxVoice = viewModel::cloneMiniMaxVoice,
-                            onDesignMiniMaxVoice = viewModel::designMiniMaxVoice,
-                            onPlayMiniMaxTrialAudio = { audioHex ->
-                                viewModel.playMiniMaxTrialAudio(audioHex, ttsGainDb)
-                            },
-                            onGenerateMiniMaxVoiceDescription = { draft ->
-                                viewModel.generateMiniMaxVoiceDescription(
-                                    draft = draft,
-                                    settings = buildSnapshot(),
-                                    outputLanguageTag = context.resources.configuration.locales[0]
-                                        .toLanguageTag(),
-                                )
-                            },
-                            onPreviewMiniMaxVoice = { voiceId, previewText ->
-                                viewModel.testTts(
-                                    previewText,
-                                    buildSnapshot().copy(
-                                        ttsEnabled = true,
-                                        ttsProvider = TtsProvider.MINIMAX,
-                                        ttsMiniMaxVoice = voiceId,
-                                    ),
-                                )
-                            },
-                            onDeleteMiniMaxVoice = viewModel::deleteMiniMaxVoice,
-                            miniMaxEmotion = ttsMiniMaxEmotion,
-                            onMiniMaxEmotionChange = { ttsMiniMaxEmotion = it },
-                            miniMaxSpeed = ttsMiniMaxSpeed,
-                            onMiniMaxSpeedChange = { ttsMiniMaxSpeed = it },
-                            miniMaxPitch = ttsMiniMaxPitch,
-                            onMiniMaxPitchChange = { ttsMiniMaxPitch = it },
-                            mimoModel = ttsMimoModel,
-                            onMimoModelChange = { ttsMimoModel = it },
-                            mimoBaseUrl = ttsMimoBaseUrl,
-                            onMimoBaseUrlChange = { ttsMimoBaseUrl = it },
-                            mimoApiKey = ttsMimoApiKey,
-                            onMimoApiKeyChange = { ttsMimoApiKey = it },
-                            mimoVoice = ttsMimoVoice,
-                            onMimoVoiceChange = { ttsMimoVoice = it },
-                            mimoInstruction = ttsMimoInstruction,
-                            onMimoInstructionChange = {
-                                ttsMimoInstruction = it
-                                ttsMimoPresetStyleMessage = null
-                            },
-                            mimoVoiceDesignPrompt = ttsMimoVoiceDesignPrompt,
-                            onMimoVoiceDesignPromptChange = {
-                                ttsMimoVoiceDesignPrompt = it
-                                ttsMimoVoiceDesignMessage = null
-                            },
-                            mimoVoiceCloneInstruction = ttsMimoVoiceCloneInstruction,
-                            onMimoVoiceCloneInstructionChange = {
-                                ttsMimoVoiceCloneInstruction = it
-                                ttsMimoCloneStyleMessage = null
-                            },
-                            mimoStyleGenerating = when (ttsMimoModel) {
-                                MimoTtsModel.PRESET -> ttsMimoPresetStyleGenerating
-                                MimoTtsModel.VOICE_CLONE -> ttsMimoCloneStyleGenerating
-                                MimoTtsModel.VOICE_DESIGN -> false
-                            },
-                            mimoStyleMessage = when (ttsMimoModel) {
-                                MimoTtsModel.PRESET -> ttsMimoPresetStyleMessage
-                                MimoTtsModel.VOICE_CLONE -> ttsMimoCloneStyleMessage
-                                MimoTtsModel.VOICE_DESIGN -> null
-                            },
-                            onPolishMimoStyle = { model, draft ->
-                                if (model != MimoTtsModel.VOICE_DESIGN) {
-                                    if (draft.isBlank()) {
-                                        val message = context.getString(
-                                            R.string.settings_tts_mimo_style_instruction_required
-                                        )
-                                        when (model) {
-                                            MimoTtsModel.PRESET -> ttsMimoPresetStyleMessage = message
-                                            MimoTtsModel.VOICE_CLONE -> ttsMimoCloneStyleMessage = message
-                                            MimoTtsModel.VOICE_DESIGN -> Unit
-                                        }
-                                    } else {
-                                        val draftSettings = buildSnapshot()
-                                        val outputLanguageTag =
-                                            context.resources.configuration.locales[0].toLanguageTag()
-                                        when (model) {
-                                            MimoTtsModel.PRESET -> {
-                                                ttsMimoPresetStyleGenerating = true
-                                                ttsMimoPresetStyleMessage = null
-                                            }
-                                            MimoTtsModel.VOICE_CLONE -> {
-                                                ttsMimoCloneStyleGenerating = true
-                                                ttsMimoCloneStyleMessage = null
-                                            }
-                                            MimoTtsModel.VOICE_DESIGN -> Unit
-                                        }
-                                        scope.launch {
-                                            try {
-                                                val polished = viewModel.polishMimoStyleInstruction(
-                                                    draft = draft,
-                                                    settings = draftSettings,
-                                                    outputLanguageTag = outputLanguageTag,
-                                                )
-                                                when (model) {
-                                                    MimoTtsModel.PRESET -> ttsMimoInstruction = polished
-                                                    MimoTtsModel.VOICE_CLONE -> {
-                                                        ttsMimoVoiceCloneInstruction = polished
-                                                    }
-                                                    MimoTtsModel.VOICE_DESIGN -> Unit
-                                                }
-                                            } catch (error: CancellationException) {
-                                                throw error
-                                            } catch (error: Throwable) {
-                                                val message = context.getString(
-                                                    R.string.settings_tts_mimo_style_polish_error,
-                                                    error.message ?: error.javaClass.simpleName,
-                                                )
-                                                when (model) {
-                                                    MimoTtsModel.PRESET -> {
-                                                        ttsMimoPresetStyleMessage = message
-                                                    }
-                                                    MimoTtsModel.VOICE_CLONE -> {
-                                                        ttsMimoCloneStyleMessage = message
-                                                    }
-                                                    MimoTtsModel.VOICE_DESIGN -> Unit
-                                                }
-                                            } finally {
-                                                when (model) {
-                                                    MimoTtsModel.PRESET -> {
-                                                        ttsMimoPresetStyleGenerating = false
-                                                    }
-                                                    MimoTtsModel.VOICE_CLONE -> {
-                                                        ttsMimoCloneStyleGenerating = false
-                                                    }
-                                                    MimoTtsModel.VOICE_DESIGN -> Unit
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            mimoVoiceDesignGenerating = ttsMimoVoiceDesignGenerating,
-                            mimoVoiceDesignMessage = ttsMimoVoiceDesignMessage,
-                            onGenerateMimoVoiceDesign = { draft ->
-                                if (draft.isBlank()) {
-                                    ttsMimoVoiceDesignMessage = context.getString(
-                                        R.string.settings_tts_mimo_voice_description_required
-                                    )
-                                    return@TtsSettings
-                                }
-                                val draftSettings = buildSnapshot()
-                                val outputLanguageTag = context.resources.configuration.locales[0]
-                                    .toLanguageTag()
-                                ttsMimoVoiceDesignGenerating = true
-                                ttsMimoVoiceDesignMessage = null
-                                scope.launch {
-                                    try {
-                                        ttsMimoVoiceDesignPrompt = viewModel.generateMimoVoiceDesign(
-                                            draft = draft,
-                                            settings = draftSettings,
-                                            outputLanguageTag = outputLanguageTag,
-                                        )
-                                    } catch (error: CancellationException) {
-                                        throw error
-                                    } catch (error: Throwable) {
-                                        ttsMimoVoiceDesignMessage = context.getString(
-                                            R.string.settings_tts_mimo_ai_generate_error,
-                                            error.message ?: error.javaClass.simpleName,
-                                        )
-                                    } finally {
-                                        ttsMimoVoiceDesignGenerating = false
-                                    }
-                                }
-                            },
-                            mimoVoiceSampleUri = ttsMimoVoiceSampleUri,
-                            onMimoVoiceSampleUriChange = { ttsMimoVoiceSampleUri = it },
-                        )
-                    }
-                }
-            }
 
             item(key = SectionKeys.OCR) {
             val ocrSectionDisabled = translatorEngine == TranslatorEngine.YOUDAO_PICTRANS
@@ -5646,66 +5373,6 @@ fun SettingsScreen(
             }
 
             // —— 划词翻译 ——
-            item(key = SectionKeys.WORD_SELECT) {
-            SettingsSearchTarget(searchTargetRegistry, *SEARCH_TARGET_WORD_SELECT) {
-            SectionCard(title = stringResource(R.string.settings_section_word_select)) {
-                SwitchRow(
-                    stringResource(R.string.settings_word_select_extract_only),
-                    wordSelectExtractOnly,
-                    helpText = stringResource(R.string.settings_word_select_extract_only_help),
-                ) { enabled ->
-                    wordSelectExtractOnly = enabled
-                    scope.launch {
-                        try {
-                            viewModel.saveWordSelectExtractOnly(enabled)
-                            initialSettings = initialSettings?.copy(wordSelectExtractOnly = enabled)
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (error: Exception) {
-                            Timber.e(error, "Failed to auto-save word-select extraction mode")
-                            if (wordSelectExtractOnly == enabled) {
-                                wordSelectExtractOnly = initialSettings?.wordSelectExtractOnly ?: false
-                            }
-                            snackbarHostState.showSnackbar(error.localizedMessage ?: error.javaClass.simpleName)
-                        }
-                    }
-                }
-                SwitchRow(
-                    stringResource(R.string.settings_word_select_precise_adjust),
-                    wordSelectPreciseAdjust,
-                    helpText = stringResource(R.string.settings_word_select_precise_adjust_help)
-                ) {
-                    wordSelectPreciseAdjust = it
-                    scope.launch { viewModel.saveWordSelectPreciseAdjust(it) }
-                }
-                SwitchRow(
-                    stringResource(R.string.settings_word_select_card_mode),
-                    wordSelectCardMode || wordSelectExtractOnly,
-                    enabled = !wordSelectExtractOnly,
-                    helpText = stringResource(R.string.settings_word_select_card_mode_help)
-                ) {
-                    wordSelectCardMode = it
-                    scope.launch { viewModel.saveWordSelectCardMode(it) }
-                }
-                SwitchRow(
-                    stringResource(R.string.settings_word_select_remember_region),
-                    wordSelectRememberRegion,
-                    helpText = stringResource(R.string.settings_word_select_remember_region_help)
-                ) {
-                    wordSelectRememberRegion = it
-                    scope.launch { viewModel.saveWordSelectRememberRegion(it) }
-                }
-                SwitchRow(
-                    stringResource(R.string.settings_floating_window_auto_hide),
-                    floatingWindowAutoHideWhenObstructing,
-                    helpText = stringResource(R.string.settings_floating_window_auto_hide_help)
-                ) {
-                    floatingWindowAutoHideWhenObstructing = it
-                    scope.launch { viewModel.saveFloatingWindowAutoHideWhenObstructing(it) }
-                }
-            }
-            }
-            }
 
             item(key = SectionKeys.CAPTURE_REGION) {
             SettingsSearchTarget(searchTargetRegistry, *SEARCH_TARGET_CAPTURE_REGION) {
@@ -5825,85 +5492,6 @@ fun SettingsScreen(
             }
 
             // —— 输入翻译 ——
-            item(key = SectionKeys.INPUT_TRANSLATION) {
-            SettingsSearchTarget(
-                searchTargetRegistry,
-                R.string.settings_search_item_input_translation,
-            ) {
-            SectionCard(title = stringResource(R.string.settings_section_input_translation)) {
-                Text(
-                    stringResource(R.string.settings_input_translation_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.settings_input_translation_double_action),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    InputTranslationDoubleAction.entries.forEachIndexed { index, action ->
-                        SegmentedButton(
-                            selected = inputTranslationDoubleAction == action,
-                            onClick = {
-                                inputTranslationDoubleAction = action
-                                scope.launch {
-                                    viewModel.saveInputTranslationDoubleAction(action)
-                                }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = InputTranslationDoubleAction.entries.size,
-                            ),
-                            icon = {},
-                            label = {
-                                Text(
-                                    stringResource(
-                                        when (action) {
-                                            InputTranslationDoubleAction.FULL_SCREEN ->
-                                                R.string.settings_input_translation_double_full_screen
-                                            InputTranslationDoubleAction.WORD_SELECT ->
-                                                R.string.settings_input_translation_double_word_select
-                                        }
-                                    )
-                                )
-                            },
-                        )
-                    }
-                }
-                Text(
-                    stringResource(R.string.settings_input_translation_double_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.settings_input_translation_permission),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedButton(
-                    enabled = !accessibilityServiceEnabled,
-                    onClick = {
-                        scope.launch {
-                            if (!viewModel.enableAccessibilityViaShizuku()) {
-                                context.startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(
-                            if (accessibilityServiceEnabled) {
-                                R.string.settings_btn_a11y_enabled
-                            } else {
-                                R.string.settings_btn_open_a11y
-                            }
-                        )
-                    )
-                }
-            }
-            }
-            }
 
             // —— 循环触发器 ——
             item(key = SectionKeys.TRIGGER) {
@@ -6272,77 +5860,6 @@ fun SettingsScreen(
 
             }
 
-            item(key = SectionKeys.DEVELOPER) {
-            SettingsSearchTarget(searchTargetRegistry, *SEARCH_TARGET_DEVELOPER) {
-            SectionCard(
-                title = stringResource(R.string.settings_section_developer),
-            ) {
-                SwitchRow(
-                    label = stringResource(R.string.settings_developer_mode_label),
-                    checked = developerOptionsEnabled,
-                    helpText = stringResource(R.string.settings_developer_mode_hint),
-                ) { developerOptionsEnabled = it }
-                if (developerOptionsEnabled) {
-                    Column(
-                        modifier = Modifier.padding(start = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        SwitchRow(
-                            label = stringResource(R.string.settings_share_entire_screen),
-                            checked = shareEntireScreen,
-                        ) { shareEntireScreen = it }
-                        SwitchRow(
-                            label = stringResource(R.string.settings_performance_overlay_label),
-                            checked = performanceOverlayEnabled,
-                            helpText = stringResource(R.string.settings_performance_overlay_hint),
-                        ) { performanceOverlayEnabled = it }
-                        SwitchRow(
-                            label = stringResource(
-                                R.string.settings_batch_cumulative_completion_time_label
-                            ),
-                            checked = batchCumulativeCompletionTimeEnabled,
-                            helpText = stringResource(
-                                R.string.settings_batch_cumulative_completion_time_hint
-                            ),
-                        ) { batchCumulativeCompletionTimeEnabled = it }
-                        SwitchRow(
-                            label = stringResource(R.string.settings_disable_translation_cache_label),
-                            checked = disableTranslationCache,
-                            helpText = stringResource(R.string.settings_disable_translation_cache_hint),
-                        ) { disableTranslationCache = it }
-                        SwitchRow(
-                            label = stringResource(R.string.settings_ocr_red_box_mode_label),
-                            checked = ocrRedBoxModeEnabled,
-                            helpText = stringResource(R.string.settings_ocr_red_box_mode_hint),
-                        ) { ocrRedBoxModeEnabled = it }
-                        if (ocrRedBoxModeEnabled) {
-                            Column(
-                                modifier = Modifier.padding(start = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                SwitchRow(
-                                    stringResource(R.string.settings_ocr_red_box_source_label),
-                                    ocrRedBoxShowSourceText,
-                                ) { ocrRedBoxShowSourceText = it }
-                                SwitchRow(
-                                    stringResource(R.string.settings_ocr_red_box_translation_label),
-                                    ocrRedBoxShowTranslation,
-                                ) { ocrRedBoxShowTranslation = it }
-                                Text(
-                                    stringResource(R.string.settings_ocr_red_box_translation_hint),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // —— 网络（全局，跨 OCR / 翻译）——
-            }
-
-            }
 
             item(key = SectionKeys.NETWORK) {
             SettingsSearchTarget(searchTargetRegistry, *SEARCH_TARGET_NETWORK) {
@@ -9119,16 +8636,12 @@ internal val SETTINGS_SECTION_KEYS_IN_ORDER = listOf(
     SectionKeys.GENERAL,
     SectionKeys.PRESETS,
     SectionKeys.TRANSLATE,
-    SectionKeys.TTS,
     SectionKeys.OCR,
     SectionKeys.OVERLAY,
-    SectionKeys.WORD_SELECT,
     SectionKeys.CAPTURE_REGION,
-    SectionKeys.INPUT_TRANSLATION,
     SectionKeys.TRIGGER,
     SectionKeys.FLOATING,
     SectionKeys.ARC_MENU,
-    SectionKeys.DEVELOPER,
     SectionKeys.NETWORK,
 )
 
@@ -9492,30 +9005,6 @@ private val SETTING_ITEMS: List<SearchEntry> = listOfNotNull(
         R.string.settings_search_item_failed_translation_retry,
         SETTINGS_SEARCH_FAILED_TRANSLATION_RETRY_KEYWORDS,
     ),
-    SearchEntry(
-        SectionKeys.TTS,
-        R.string.settings_section_tts,
-        R.string.settings_section_tts,
-        listOf("tts", "text to speech", "voice output", "语音", "朗读"),
-    ),
-    SearchEntry(
-        SectionKeys.TTS,
-        R.string.settings_section_tts,
-        R.string.settings_search_item_tts_enable,
-        listOf("tts", "text to speech", "speak", "voice output", "read aloud", "语音", "朗读", "播报"),
-    ),
-    SearchEntry(
-        SectionKeys.TTS,
-        R.string.settings_section_tts,
-        R.string.settings_search_item_tts_provider,
-        listOf("system tts", "android tts", "generic http", "luna", "pc", "volcengine", "aliyun", "火山", "阿里", "音色", "情绪"),
-    ),
-    SearchEntry(
-        SectionKeys.TTS,
-        R.string.settings_section_tts,
-        R.string.settings_search_item_tts_http,
-        listOf("tts url", "tts token", "http tts", "gateway", "adapter", "base url", "json base64", "binary audio", "本地网关", "适配器"),
-    ),
     SearchEntry(SectionKeys.PRESETS, R.string.settings_section_translation_presets, R.string.settings_section_translation_presets, listOf("preset", "presets", "profile", "mode", "系统预设方案", "翻译预设", "预设", "模式")),
     SearchEntry(SectionKeys.PRESETS, R.string.settings_section_translation_presets, R.string.settings_search_item_preset_transfer, SETTINGS_SEARCH_TRANSFER_KEYWORDS),
 
@@ -9719,17 +9208,11 @@ private val SETTING_ITEMS: List<SearchEntry> = listOfNotNull(
     SearchEntry(SectionKeys.FLOATING, R.string.settings_section_floating, R.string.settings_search_item_floating_snap, listOf("snap", "贴边", "edge")),
     SearchEntry(SectionKeys.FLOATING, R.string.settings_section_floating, R.string.settings_search_item_floating_auto_dock, listOf("auto dock", "自动停靠", "停靠", "藏边")),
     SearchEntry(SectionKeys.FLOATING, R.string.settings_section_floating, R.string.settings_search_item_floating_dock_inset, listOf("inset", "贴边距离", "手势", "全面屏", "gesture")),
-    SearchEntry(SectionKeys.INPUT_TRANSLATION, R.string.settings_section_input_translation, R.string.settings_search_item_input_translation, listOf("input translation", "输入翻译", "输入框", "双击", "full screen", "word select", "全屏翻译", "划词翻译")),
 
     // —— 弧菜单按钮顺序 ——
     SearchEntry(SectionKeys.ARC_MENU, R.string.settings_section_arc_menu, R.string.settings_search_item_arc_menu_order, listOf("arc menu", "弧菜单", "弧形", "顺序", "order", "reorder", "排序", "拖动", "menu", "按钮", "page", "page size", "分页", "每页", "翻页", "loop", "region", "home", "skill", "技能", "划词", "language", "语言", "源语言", "目标语言")),
 
     // —— 划词翻译 ——
-    SearchEntry(SectionKeys.WORD_SELECT, R.string.settings_section_word_select, R.string.settings_search_item_word_select_precise, listOf("划词", "word select", "precise", "adjust", "松手", "精确调整", "release")),
-    SearchEntry(SectionKeys.WORD_SELECT, R.string.settings_section_word_select, R.string.settings_search_item_word_select_card_mode, listOf("划词", "word select", "card", "overlay", "卡片", "叠加", "全屏模式")),
-    SearchEntry(SectionKeys.WORD_SELECT, R.string.settings_section_word_select, R.string.settings_search_item_word_select_remember, listOf("划词", "word select", "remember", "记住", "选框", "region")),
-    SearchEntry(SectionKeys.WORD_SELECT, R.string.settings_section_word_select, R.string.settings_word_select_extract_only, listOf("划词", "word select", "extract", "OCR", "仅提取文字", "识别")),
-    SearchEntry(SectionKeys.WORD_SELECT, R.string.settings_section_word_select, R.string.settings_search_item_floating_window_auto_hide, listOf("划词", "word select", "floating window", "悬浮窗", "遮挡", "自动隐藏", "闪烁", "capture")),
 
     // —— 触发器 ——
     SearchEntry(SectionKeys.TRIGGER, R.string.settings_section_trigger, R.string.settings_search_item_loop_interval, listOf("loop", "循环", "interval", "间隔")),
@@ -9759,12 +9242,6 @@ private val SETTING_ITEMS: List<SearchEntry> = listOfNotNull(
     SearchEntry(SectionKeys.TRIGGER, R.string.settings_section_trigger, R.string.settings_search_item_a11y_volume, listOf("无障碍", "a11y", "accessibility", "volume", "音量")),
 
     // —— 开发者诊断 ——
-    SearchEntry(
-        SectionKeys.DEVELOPER,
-        R.string.settings_section_developer,
-        R.string.settings_search_item_developer_ocr,
-        SETTINGS_SEARCH_DEVELOPER_OCR_KEYWORDS,
-    ),
 
     // —— 网络 ——
     SearchEntry(SectionKeys.NETWORK, R.string.settings_section_network, R.string.settings_search_item_api_timeout, listOf("timeout", "超时", "网络", "network")),
